@@ -117,3 +117,33 @@ Configure `Amadeus` values (`BaseUrl`, `ClientId`, `ClientSecret`) in environmen
 
 ## Provider Notes
 Flights and locations use Amadeus. Hotels and activities remain mocked.
+
+## Deploying to Render
+1. In Render, create a **Web Service** and connect your GitHub repository.
+2. Select the branch you want to deploy.
+3. Choose **Docker** as the deployment method (Render will use the root `Dockerfile`).
+4. Add required environment variables in the Render dashboard (do **not** commit secrets):
+   - `ASPNETCORE_ENVIRONMENT`
+   - `Security__RequireAuthentication`
+   - `Jwt__Issuer`
+   - `Jwt__Audience`
+   - `Jwt__Secret`
+   - `Jwt__AccessTokenMinutes`
+   - `Jwt__RefreshTokenDays`
+   - `Amadeus__BaseUrl`
+   - `Amadeus__ClientId`
+   - `Amadeus__ClientSecret`
+   - `ConnectionStrings__DefaultConnection`
+   - `Cors__AllowAnyOrigin`
+   - `Cors__AllowedOrigins__0`
+5. Create or connect a Render PostgreSQL instance, and use the internal database URL/connection string where possible for `ConnectionStrings__DefaultConnection`.
+6. Run EF Core migrations either locally (against the target DB) or from a secure shell/one-off environment that can reach the Render database.
+7. Set production Amadeus credentials in Render (`Amadeus__ClientId`, `Amadeus__ClientSecret`).
+8. Set `Cors__AllowedOrigins__0` to your deployed frontend URL.
+
+Use `.env.example` as a template for local/Render variable names only. Never commit real secrets or a real `.env` file.
+
+### Render CORS Safety
+- For local demo/development, `Cors__AllowAnyOrigin=true` is convenient.
+- For production, set `Cors__AllowAnyOrigin=false` and explicitly configure allowed frontend domains with `Cors__AllowedOrigins__0`, `Cors__AllowedOrigins__1`, etc.
+- When `Cors__AllowAnyOrigin=true`, the API uses `AllowAnyOrigin + AllowAnyHeader + AllowAnyMethod` and does not use credentials mode.

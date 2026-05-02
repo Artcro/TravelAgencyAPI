@@ -1,0 +1,21 @@
+# Build outputs
+bin/
+obj/
+**/bin/
+**/obj/
+
+# IDE/editor
+.vs/
+.idea/
+.vscode/
+*.user
+*.suo
+
+# Test artifacts
+TestResults/
+coverage/
+
+# Environment files
+.env
+.env.*
+!.env.example
