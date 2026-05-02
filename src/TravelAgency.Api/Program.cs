@@ -12,6 +12,12 @@ using TravelAgency.Infrastructure.Config;
 
 var builder = WebApplication.CreateBuilder(args);
 
+var port = Environment.GetEnvironmentVariable("PORT");
+if (!string.IsNullOrWhiteSpace(port))
+{
+    builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
+}
+
 builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection(JwtOptions.SectionName));
 builder.Services.Configure<TravelAgency.Infrastructure.SecurityOptions>(builder.Configuration.GetSection(TravelAgency.Infrastructure.SecurityOptions.SectionName));
 builder.Services.Configure<AmadeusOptions>(builder.Configuration.GetSection(AmadeusOptions.SectionName));
@@ -52,7 +58,20 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 builder.Services.AddAuthorization();
 
 var cors = builder.Configuration.GetSection(CorsOptions.SectionName).Get<CorsOptions>() ?? new CorsOptions();
-builder.Services.AddCors(o => o.AddPolicy("DefaultCors", p => p.WithOrigins(cors.AllowedOrigins).AllowAnyHeader().AllowAnyMethod()));
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("DefaultCors", policy =>
+    {
+        if (cors.AllowAnyOrigin)
+        {
+            policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod();
+        }
+        else
+        {
+            policy.WithOrigins(cors.AllowedOrigins).AllowAnyHeader().AllowAnyMethod();
+        }
+    });
+});
 
 var app = builder.Build();
 app.UseMiddleware<CorrelationIdMiddleware>();
