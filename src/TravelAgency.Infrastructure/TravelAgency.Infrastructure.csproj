@@ -17,4 +17,8 @@
     <ProjectReference Include="..\TravelAgency.Application\TravelAgency.Application.csproj" />
     <ProjectReference Include="..\TravelAgency.Domain\TravelAgency.Domain.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
 </Project>
