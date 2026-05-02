@@ -22,3 +22,9 @@ public interface ICurrentUserService
     string? Email { get; }
     bool IsAuthenticated { get; }
 }
+
+
+public interface ITravelTicketService
+{
+    Task<TravelTicketSearchResponse> SearchAsync(TravelTicketSearchRequest request, CancellationToken cancellationToken);
+}
