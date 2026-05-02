@@ -1,0 +1,17 @@
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: travel_agency_dev
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports: ["5432:5432"]
+  travelagency-api:
+    build:
+      context: .
+      dockerfile: src/TravelAgency.Api/Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=travel_agency_dev;Username=postgres;Password=postgres
+    ports: ["5000:8080"]
+    depends_on: [postgres]
