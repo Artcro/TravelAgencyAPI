@@ -1,51 +1,61 @@
 # TravelAgencyApi
 
-## Phase 2 status
-Implemented travel search flow with provider abstractions, Amadeus-backed flights/locations, and mocked hotels/activities.
+## Phase 3 Status
+Phase 3 is implemented: migrations setup instructions, saved-trip ownership hardening, service-level test expansion, Amadeus parsing hardening, rate limiting policies, and README operational guidance are in place.
 
-## Amadeus credentials
-Required:
-- `Amadeus:ClientId`
-- `Amadeus:ClientSecret`
-- `Amadeus:BaseUrl` (default `https://test.api.amadeus.com`)
+## Database and Migrations
+Run from repository root:
 
-### Configure with user-secrets
 ```bash
-cd src/TravelAgency.Api
-dotnet user-secrets set "Amadeus:ClientId" "your_client_id"
-dotnet user-secrets set "Amadeus:ClientSecret" "your_client_secret"
+dotnet ef migrations add InitialCreate \
+  --project src/TravelAgency.Infrastructure \
+  --startup-project src/TravelAgency.Api \
+  --output-dir Database/Migrations
+
+# apply migrations
+dotnet ef database update \
+  --project src/TravelAgency.Infrastructure \
+  --startup-project src/TravelAgency.Api
+
+# list migrations
+dotnet ef migrations list \
+  --project src/TravelAgency.Infrastructure \
+  --startup-project src/TravelAgency.Api
 ```
 
-### Configure with environment variables
-```bash
-export Amadeus__ClientId=your_client_id
-export Amadeus__ClientSecret=your_client_secret
-export Amadeus__BaseUrl=https://test.api.amadeus.com
+> Note: if `dotnet ef` is missing, install it first: `dotnet tool install --global dotnet-ef`.
+
+## Security: RequireAuthentication
+`appsettings.json`:
+
+```json
+"Security": {
+  "RequireAuthentication": false
+}
 ```
 
-## Example location request
+- `false` (demo mode): saved trips may be created anonymously; `SavedTripEntity.UserId` can be null; list endpoints can return anonymous/demo trips.
+- `true` (secured mode): saved-trip operations require authenticated context, and all list/get/delete operations are constrained to the signed-in owner.
+
+## Anonymous vs Authenticated Saved Trips
+- Demo mode keeps frontend demo behavior and allows anonymous save/list/delete flows.
+- Authenticated mode enforces ownership boundaries for create/list/get/delete and performs soft delete with audit logging.
+
+## Rate Limiting
+Named policies:
+- `auth-strict` for `/api/v1/auth/login`, `/api/v1/auth/register`, `/api/v1/auth/refresh`
+- `search-medium` for `/api/v1/trips/search`
+- `locations-relaxed` for `/api/v1/locations`
+
+## Local Build/Test
 ```bash
-curl "http://localhost:5000/api/v1/locations?query=rio"
+dotnet restore TravelAgencyApi.sln
+dotnet build TravelAgencyApi.sln
+dotnet test TravelAgencyApi.sln
 ```
 
-## Example trip search
-```bash
-curl -X POST "http://localhost:5000/api/v1/trips/search" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "origin": "GRU",
-    "destination": "GIG",
-    "departureDate": "2026-06-15",
-    "returnDate": "2026-06-20",
-    "adults": 1,
-    "children": 0,
-    "infants": 0,
-    "currency": "BRL",
-    "travelClass": "ECONOMY",
-    "maxFlightResults": 10,
-    "includeHotels": true,
-    "includeActivities": true
-  }'
-```
+## Amadeus Setup Reminder
+Configure `Amadeus` values (`BaseUrl`, `ClientId`, `ClientSecret`) in environment/app settings before running live provider flows.
 
-> Hotels and activities are mocked providers in Phase 2.
+## Provider Notes
+Flights and locations use Amadeus. Hotels and activities remain mocked in Phase 3.

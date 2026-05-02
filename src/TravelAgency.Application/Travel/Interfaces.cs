@@ -15,3 +15,10 @@ public interface ISavedTripService
     Task<object?> GetByIdAsync(Guid tripId, Guid? userId, CancellationToken cancellationToken);
     Task<bool> DeleteAsync(Guid tripId, Guid? userId, CancellationToken cancellationToken);
 }
+
+public interface ICurrentUserService
+{
+    Guid? UserId { get; }
+    string? Email { get; }
+    bool IsAuthenticated { get; }
+}

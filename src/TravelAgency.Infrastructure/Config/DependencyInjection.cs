@@ -30,6 +30,7 @@ public static class DependencyInjection
         services.AddScoped<IHotelProvider, MockHotelProvider>();
         services.AddScoped<IActivityProvider, MockActivityProvider>();
         services.AddScoped<AmadeusAuthClient>();
+        services.AddHttpClient("amadeus", c => c.Timeout = TimeSpan.FromSeconds(20));
         services.AddHttpClient();
         return services;
     }
