@@ -25,6 +25,7 @@ public static class DependencyInjection
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<ITripSearchService, TripSearchService>();
         services.AddScoped<ISavedTripService, SavedTripService>();
+        services.AddScoped<ITravelTicketService, TravelTicketService>();
         services.AddScoped<ILocationProvider, AmadeusLocationProvider>();
         services.AddScoped<IFlightProvider, AmadeusFlightProvider>();
         services.AddScoped<IHotelProvider, MockHotelProvider>();
