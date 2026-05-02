@@ -1,1 +1,24 @@
-using Microsoft.AspNetCore.Mvc; using TravelAgency.Application.DTOs.Travel; namespace TravelAgency.Api.Controllers; [ApiController][Route("api/v1/trips")] public class TripsController:ControllerBase{[HttpPost("search")] public ActionResult<TripSearchResponse> Search([FromBody] TripSearchRequest req){return Ok(new TripSearchResponse{SearchId=Guid.NewGuid(),Origin=new(req.Origin,req.Origin),Destination=new(req.Destination,req.Destination),DepartureDate=req.DepartureDate,ReturnDate=req.ReturnDate,Currency=req.Currency,Warnings=["Hotel results are mocked.","Activity results are mocked."]});}}
+using Microsoft.AspNetCore.Mvc;
+using TravelAgency.Application.DTOs.Travel;
+using TravelAgency.Application.Travel;
+
+namespace TravelAgency.Api.Controllers;
+
+[ApiController]
+[Route("api/v1/trips")]
+public class TripsController(ITripSearchService tripSearchService) : ControllerBase
+{
+    [HttpPost("search")]
+    public async Task<ActionResult<TripSearchResponse>> Search([FromBody] TripSearchRequest req, CancellationToken cancellationToken)
+    {
+        var result = await tripSearchService.SearchAsync(req, null, cancellationToken);
+        return Ok(result);
+    }
+
+    [HttpGet("searches/{searchId:guid}")]
+    public async Task<ActionResult<TripSearchResponse>> GetSearch(Guid searchId, CancellationToken cancellationToken)
+    {
+        var result = await tripSearchService.GetSearchByIdAsync(searchId, null, cancellationToken);
+        return result is null ? NotFound() : Ok(result);
+    }
+}
