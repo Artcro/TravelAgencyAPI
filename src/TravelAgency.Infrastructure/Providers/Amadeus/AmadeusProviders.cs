@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Text.Json;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using TravelAgency.Application.DTOs.Travel;
 using TravelAgency.Application.Providers;
@@ -9,7 +10,7 @@ using TravelAgency.Infrastructure.Options;
 
 namespace TravelAgency.Infrastructure.Providers.Amadeus;
 
-public sealed class AmadeusLocationProvider(IHttpClientFactory factory, AmadeusAuthClient auth, IOptions<AmadeusOptions> options, TravelDbContext db) : ILocationProvider
+public sealed class AmadeusLocationProvider(IHttpClientFactory factory, AmadeusAuthClient auth, IOptions<AmadeusOptions> options, TravelDbContext db, ILogger<AmadeusLocationProvider> logger) : ILocationProvider
 {
     public async Task<IReadOnlyList<LocationSuggestionDto>> SearchLocationsAsync(string query, CancellationToken cancellationToken)
     {
@@ -19,8 +20,7 @@ public sealed class AmadeusLocationProvider(IHttpClientFactory factory, AmadeusA
         var url = $"{options.Value.BaseUrl}/v1/reference-data/locations?subType=CITY,AIRPORT&keyword={Uri.EscapeDataString(query)}";
         var res = await c.GetAsync(url, cancellationToken);
         var body = await res.Content.ReadAsStringAsync(cancellationToken);
-        db.ProviderRequestLogs.Add(new ProviderRequestLogEntity { Id = Guid.NewGuid(), Provider = "Amadeus", Endpoint = "/v1/reference-data/locations", StatusCode = (int)res.StatusCode, Success = res.IsSuccessStatusCode, DurationMs = sw.ElapsedMilliseconds, CreatedAtUtc = DateTime.UtcNow });
-        await db.SaveChangesAsync(cancellationToken);
+        await TrySaveProviderRequestLogAsync("/v1/reference-data/locations", (int)res.StatusCode, res.IsSuccessStatusCode, sw.ElapsedMilliseconds, cancellationToken);
         if (!res.IsSuccessStatusCode) return [];
 
         using var doc = JsonDocument.Parse(body);
@@ -34,9 +34,22 @@ public sealed class AmadeusLocationProvider(IHttpClientFactory factory, AmadeusA
             return new LocationSuggestionDto(iata, name, subtype, country, $"{name} ({iata})");
         }).ToList();
     }
+
+    private async Task TrySaveProviderRequestLogAsync(string endpoint, int statusCode, bool success, long durationMs, CancellationToken cancellationToken)
+    {
+        try
+        {
+            db.ProviderRequestLogs.Add(new ProviderRequestLogEntity { Id = Guid.NewGuid(), Provider = "Amadeus", Endpoint = endpoint, StatusCode = statusCode, Success = success, DurationMs = durationMs, CreatedAtUtc = DateTime.UtcNow });
+            await db.SaveChangesAsync(cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Best-effort provider request logging failed for Amadeus location provider.");
+        }
+    }
 }
 
-public sealed class AmadeusFlightProvider(IHttpClientFactory factory, AmadeusAuthClient auth, IOptions<AmadeusOptions> options, TravelDbContext db) : IFlightProvider
+public sealed class AmadeusFlightProvider(IHttpClientFactory factory, AmadeusAuthClient auth, IOptions<AmadeusOptions> options, TravelDbContext db, ILogger<AmadeusFlightProvider> logger) : IFlightProvider
 {
     public async Task<IReadOnlyList<FlightOptionDto>> SearchFlightsAsync(TripSearchRequest request, CancellationToken cancellationToken)
     {
@@ -47,8 +60,7 @@ public sealed class AmadeusFlightProvider(IHttpClientFactory factory, AmadeusAut
         if (request.ReturnDate is not null) q += $"&returnDate={request.ReturnDate:yyyy-MM-dd}";
         var res = await c.GetAsync($"{options.Value.BaseUrl}/v2/shopping/flight-offers?{q}", cancellationToken);
         var body = await res.Content.ReadAsStringAsync(cancellationToken);
-        db.ProviderRequestLogs.Add(new ProviderRequestLogEntity { Id = Guid.NewGuid(), Provider = "Amadeus", Endpoint = "/v2/shopping/flight-offers", StatusCode = (int)res.StatusCode, Success = res.IsSuccessStatusCode, DurationMs = sw.ElapsedMilliseconds, CreatedAtUtc = DateTime.UtcNow });
-        await db.SaveChangesAsync(cancellationToken);
+        await TrySaveProviderRequestLogAsync("/v2/shopping/flight-offers", (int)res.StatusCode, res.IsSuccessStatusCode, sw.ElapsedMilliseconds, cancellationToken);
         if (!res.IsSuccessStatusCode) throw new InvalidOperationException("Amadeus flights failed.");
 
         using var doc = JsonDocument.Parse(body);
@@ -85,5 +97,18 @@ public sealed class AmadeusFlightProvider(IHttpClientFactory factory, AmadeusAut
         }
 
         return results;
+    }
+
+    private async Task TrySaveProviderRequestLogAsync(string endpoint, int statusCode, bool success, long durationMs, CancellationToken cancellationToken)
+    {
+        try
+        {
+            db.ProviderRequestLogs.Add(new ProviderRequestLogEntity { Id = Guid.NewGuid(), Provider = "Amadeus", Endpoint = endpoint, StatusCode = statusCode, Success = success, DurationMs = durationMs, CreatedAtUtc = DateTime.UtcNow });
+            await db.SaveChangesAsync(cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Best-effort provider request logging failed for Amadeus flight provider.");
+        }
     }
 }

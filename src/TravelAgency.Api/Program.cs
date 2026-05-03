@@ -91,6 +91,28 @@ if (applyMigrationsOnStartup)
         var db = scope.ServiceProvider.GetRequiredService<TravelDbContext>();
         db.Database.Migrate();
         logger.LogInformation("Database migrations applied successfully on startup.");
+
+        var requiredTables = new[] { "ProviderRequestLogs", "TripSearches", "SavedTrips", "AuditLogs" };
+        var missingTables = new List<string>();
+        foreach (var table in requiredTables)
+        {
+            var exists = db.Database.SqlQueryRaw<int>("SELECT COUNT(1) FROM information_schema.tables WHERE table_schema = 'public' AND table_name = {0}", table).AsEnumerable().FirstOrDefault() > 0;
+            if (!exists) missingTables.Add(table);
+        }
+
+        if (missingTables.Count == 0)
+        {
+            logger.LogInformation("Database schema verification passed for critical tables.");
+        }
+        else
+        {
+            logger.LogError("Database schema verification failed. Missing critical tables: {MissingTables}", string.Join(", ", missingTables));
+            var failStartup = app.Configuration.GetValue<bool?>("Database:FailStartupOnMissingTables") ?? true;
+            if (app.Environment.IsProduction() && failStartup)
+            {
+                throw new InvalidOperationException($"Missing critical database tables: {string.Join(", ", missingTables)}");
+            }
+        }
     }
     catch (Exception ex)
     {

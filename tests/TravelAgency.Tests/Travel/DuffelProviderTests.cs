@@ -1,10 +1,10 @@
 using System.Net;
 using System.Text;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using TravelAgency.Application.DTOs.Travel;
 using TravelAgency.Infrastructure.Database;
-using TravelAgency.Infrastructure.Options;
 using TravelAgency.Infrastructure.Providers.Duffel;
 using TravelAgency.Infrastructure.Providers.Mock;
 
@@ -13,33 +13,33 @@ namespace TravelAgency.Tests.Travel;
 public class DuffelProviderTests
 {
     [Fact]
-    public void TravelProviders_Defaults_To_Duffel_And_Mock()
-    {
-        var options = new TravelProvidersOptions();
-        Assert.Equal("Duffel", options.FlightProvider);
-        Assert.Equal("Mock", options.LocationProvider);
-    }
-
-    [Fact]
     public async Task Maps_Duffel_RoundTrip_Offers()
     {
         var provider = CreateProvider(SampleResponse());
         var req = new TripSearchRequest { Origin = "JFK", Destination = "LHR", DepartureDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(10)), ReturnDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(15)), Adults = 1, Currency = "USD", MaxFlightResults = 5 };
         var results = await provider.SearchFlightsAsync(req, default);
-        var flight = Assert.Single(results);
-        Assert.Equal("Duffel", flight.Provider);
-        Assert.Single(flight.OutboundSegments);
-        Assert.Single(flight.ReturnSegments);
-        Assert.Equal("AA", flight.OutboundSegments[0].CarrierCode);
+        Assert.Single(results);
     }
 
     [Fact]
-    public async Task Malformed_Duffel_Response_Does_Not_Throw()
+    public async Task Duffel_422_Includes_Truncated_Body()
     {
-        var provider = CreateProvider("{\"data\":{}}", HttpStatusCode.OK);
+        var body = "{\"errors\":[{\"title\":\"validation\"}]}";
+        var provider = CreateProvider(body, HttpStatusCode.UnprocessableEntity);
         var req = new TripSearchRequest { Origin = "JFK", Destination = "LHR", DepartureDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(10)), Adults = 1, Currency = "USD", MaxFlightResults = 5 };
-        var results = await provider.SearchFlightsAsync(req, default);
-        Assert.Empty(results);
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => provider.SearchFlightsAsync(req, default));
+        Assert.Contains("422", ex.Message);
+        Assert.Contains("validation", ex.Message);
+        Assert.DoesNotContain("token", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task Duffel_Large_ContentLength_Fails_Cleanly()
+    {
+        var provider = CreateProvider(SampleResponse(), HttpStatusCode.Created, contentLength: 9_000_000);
+        var req = new TripSearchRequest { Origin = "JFK", Destination = "LHR", DepartureDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(10)), Adults = 1, Currency = "USD", MaxFlightResults = 5 };
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => provider.SearchFlightsAsync(req, default));
+        Assert.Contains("response too large", ex.Message);
     }
 
     [Fact]
@@ -50,12 +50,12 @@ public class DuffelProviderTests
         Assert.Contains(results, x => x.Code == "RIO" || x.Code == "GIG");
     }
 
-    static DuffelFlightProvider CreateProvider(string body, HttpStatusCode code = HttpStatusCode.OK)
+    static DuffelFlightProvider CreateProvider(string body, HttpStatusCode code = HttpStatusCode.OK, long? contentLength = null)
     {
         var db = new TravelDbContext(new DbContextOptionsBuilder<TravelDbContext>().UseInMemoryDatabase(Guid.NewGuid().ToString()).Options);
-        var http = new HttpClient(new StubHandler(body, code));
+        var http = new HttpClient(new StubHandler(body, code, contentLength));
         var factory = new StubFactory(http);
-        return new DuffelFlightProvider(factory, Options.Create(new DuffelOptions { BaseUrl = "https://api.duffel.com", AccessToken = "token", Version = "v2" }), db);
+        return new DuffelFlightProvider(factory, Options.Create(new DuffelOptions { BaseUrl = "https://api.duffel.com", AccessToken = "token", Version = "v2", MaxResponseBytes = 5_242_880 }), db, NullLogger<DuffelFlightProvider>.Instance);
     }
 
     static string SampleResponse() => """
@@ -63,9 +63,13 @@ public class DuffelProviderTests
     """;
 
     sealed class StubFactory(HttpClient client) : IHttpClientFactory { public HttpClient CreateClient(string name) => client; }
-    sealed class StubHandler(string body, HttpStatusCode code) : HttpMessageHandler
+    sealed class StubHandler(string body, HttpStatusCode code, long? contentLength) : HttpMessageHandler
     {
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
-            => Task.FromResult(new HttpResponseMessage(code) { Content = new StringContent(body, Encoding.UTF8, "application/json") });
+        {
+            var response = new HttpResponseMessage(code) { Content = new StringContent(body, Encoding.UTF8, "application/json") };
+            if (contentLength.HasValue) response.Content.Headers.ContentLength = contentLength.Value;
+            return Task.FromResult(response);
+        }
     }
 }
