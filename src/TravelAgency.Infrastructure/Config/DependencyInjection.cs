@@ -30,7 +30,6 @@ public static class DependencyInjection
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<ITripSearchService, TripSearchService>();
         services.AddScoped<ISavedTripService, SavedTripService>();
-        services.AddScoped<ITravelTicketService, TravelTicketService>();
         services.AddScoped<IFrontendTravelTicketService, FrontendTravelTicketService>();
         services.AddScoped<ILocationProvider>(sp =>
         {
