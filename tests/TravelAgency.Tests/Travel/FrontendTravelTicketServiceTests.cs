@@ -71,7 +71,7 @@ public class FrontendTravelTicketServiceTests
     {
         var service = CreateService(new StubFlightProvider([ValidFlight("TP")]), "GRU");
         var req = ValidRequest();
-        req.Origin = "";
+        req.Origem = "";
         var result = await service.SearchAsync(req, default);
         Assert.Single(result);
     }
@@ -81,7 +81,7 @@ public class FrontendTravelTicketServiceTests
     {
         var service = CreateService(new StubFlightProvider([ValidFlight("TP")]), null);
         var req = ValidRequest();
-        req.Origin = "";
+        req.Origem = "";
         await Assert.ThrowsAsync<ArgumentException>(() => service.SearchAsync(req, default));
     }
 
@@ -101,7 +101,7 @@ public class FrontendTravelTicketServiceTests
     private static FrontendTravelTicketService CreateService(IFlightProvider provider, string? defaultOrigin = null)
         => new(provider, new TravelTicketSearchRequestValidator(), Options.Create(new TravelSearchDefaultsOptions { DefaultOrigin = defaultOrigin }), NullLogger<FrontendTravelTicketService>.Instance);
 
-    private static FrontendTravelTicketSearchRequest ValidRequest() => new() { Origin = "GRU", Destination = "JFK", DepartureDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(5)) };
+    private static FrontendTravelTicketSearchRequest ValidRequest() => new() { Origem = "GRU", Destino = "JFK", DataIda = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(5)) };
 
     private static FlightOptionDto ValidFlight(string airlineCode, string? airlineName = "LATAM") => new()
     {

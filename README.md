@@ -21,28 +21,28 @@ Production docs on Render:
 - Swagger UI: https://travelagencyapi-a5zb.onrender.com/swagger
 - OpenAPI JSON: https://travelagencyapi-a5zb.onrender.com/swagger/v1/swagger.json
 
-### Example Request (origin + destination + dates)
+### Example Request (origem + destino + datas)
 ```json
 {
-  "origin": "GRU",
-  "destination": "JFK",
-  "departureDate": "2026-05-10",
-  "returnDate": "2026-05-20",
-  "adults": 1,
-  "children": 0,
-  "infants": 0,
-  "currency": "BRL",
-  "travelClass": "ECONOMY",
-  "maxResults": 10
+  "origem": "GRU",
+  "destino": "JFK",
+  "dataIda": "2026-05-10",
+  "dataVolta": "2026-05-20",
+  "adultos": 1,
+  "criancas": 0,
+  "bebes": 0,
+  "moeda": "BRL",
+  "classe": "ECONOMY",
+  "maxResultados": 10
 }
 ```
 
-### Example Request (destination + date only, using configured default origin)
+### Example Request (atalho com destino + dataIda, usando origem padrão configurada)
 ```json
 {
-  "destination": "JFK",
-  "departureDate": "2026-05-10",
-  "returnDate": "2026-05-20"
+  "destino": "JFK",
+  "dataIda": "2026-05-10",
+  "dataVolta": "2026-05-20"
 }
 ```
 
@@ -71,8 +71,9 @@ Production docs on Render:
 ```
 
 ### Notes
+- Frontend team must use **Portuguese request and response fields** for this endpoint.
 - Outbound summary only for now.
-- If `returnDate` is provided, total offer price is preserved, but return-card fields are intentionally not exposed yet.
+- If `dataVolta` is provided, total offer price is preserved, and return-card fields are exposed with Portuguese names.
 
 ## Database and Migrations
 Run from repository root:
