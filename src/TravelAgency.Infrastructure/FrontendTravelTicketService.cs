@@ -15,24 +15,24 @@ public sealed class FrontendTravelTicketService(
 {
     public async Task<IReadOnlyList<FrontendTravelTicketDto>> SearchAsync(FrontendTravelTicketSearchRequest request, CancellationToken cancellationToken)
     {
-        request.Currency = string.IsNullOrWhiteSpace(request.Currency) ? "BRL" : request.Currency;
-        request.TravelClass = string.IsNullOrWhiteSpace(request.TravelClass) ? "ECONOMY" : request.TravelClass;
-        request.Origin = string.IsNullOrWhiteSpace(request.Origin)
+        request.Moeda = string.IsNullOrWhiteSpace(request.Moeda) ? "BRL" : request.Moeda;
+        request.Classe = string.IsNullOrWhiteSpace(request.Classe) ? "ECONOMY" : request.Classe;
+        request.Origem = string.IsNullOrWhiteSpace(request.Origem)
             ? defaultsOptions.Value.DefaultOrigin ?? ""
-            : request.Origin;
+            : request.Origem;
 
         var baseRequest = new TravelTicketSearchRequest
         {
-            Origin = request.Origin,
-            Destination = request.Destination,
-            DepartureDate = request.DepartureDate,
-            ReturnDate = request.ReturnDate,
-            Adults = request.Adults,
-            Children = request.Children,
-            Infants = request.Infants,
-            Currency = request.Currency,
-            TravelClass = request.TravelClass,
-            MaxResults = request.MaxResults
+            Origin = request.Origem ?? "",
+            Destination = request.Destino,
+            DepartureDate = request.DataIda,
+            ReturnDate = request.DataVolta,
+            Adults = request.Adultos,
+            Children = request.Criancas,
+            Infants = request.Bebes,
+            Currency = request.Moeda,
+            TravelClass = request.Classe,
+            MaxResults = request.MaxResultados
         };
 
         var errors = validator.Validate(baseRequest);
