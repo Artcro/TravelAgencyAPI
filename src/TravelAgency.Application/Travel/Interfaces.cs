@@ -24,11 +24,6 @@ public interface ICurrentUserService
 }
 
 
-public interface ITravelTicketService
-{
-    Task<TravelTicketSearchResponse> SearchAsync(TravelTicketSearchRequest request, CancellationToken cancellationToken);
-}
-
 public interface IFrontendTravelTicketService
 {
     Task<IReadOnlyList<FrontendTravelTicketDto>> SearchAsync(FrontendTravelTicketSearchRequest request, CancellationToken cancellationToken);

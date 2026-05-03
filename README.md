@@ -6,18 +6,16 @@ Phase 4 is implemented with deployment/frontend contract polish: production Swag
 ## Phase 3 Status
 Phase 3 is implemented: migrations setup instructions, saved-trip ownership hardening, service-level test expansion, Amadeus parsing hardening, rate limiting policies, and README operational guidance are in place.
 
-## Travel Ticket Cards (Frontend Endpoint)
-This endpoint exists specifically for frontend flight/ticket card display prototypes and simple listing.
-
-- **Route:** `POST /api/v1/travel-tickets/search`
-- **Auth:** open/anonymous for now (`[AllowAnonymous]`)
-- **Purpose:** returns simplified flight/ticket cards from the existing flight provider flow
-- **Scope:** no booking, reservation, payment, issuing, cancellation, or refunds
-
 ## Frontend Contract Endpoint (Open)
 - **Route:** `POST /api/v1/frontend/travel-tickets/search`
 - **Auth:** open/anonymous (`[AllowAnonymous]`)
 - **Response shape:** raw JSON array (no wrapper object)
+
+
+## Broader Trips Endpoint
+- **Route:** `POST /api/v1/trips/search`
+- **Purpose:** broader aggregate trip search including flights, mocked hotels, and mocked activities.
+- **Note:** this is not the frontend ticket-card contract endpoint.
 
 Production docs on Render:
 - Swagger UI: https://travelagencyapi-a5zb.onrender.com/swagger
@@ -43,7 +41,8 @@ Production docs on Render:
 ```json
 {
   "destination": "JFK",
-  "departureDate": "2026-05-10"
+  "departureDate": "2026-05-10",
+  "returnDate": "2026-05-20"
 }
 ```
 
@@ -69,49 +68,6 @@ Production docs on Render:
     "valor": 3500.0
   }
 ]
-```
-
-### Example Request
-```json
-{
-  "origin": "RIO",
-  "destination": "LIS",
-  "departureDate": "2026-08-10",
-  "returnDate": null,
-  "adults": 1,
-  "children": 0,
-  "infants": 0,
-  "currency": "BRL",
-  "travelClass": "ECONOMY",
-  "maxResults": 10
-}
-```
-
-### Example Response
-```json
-{
-  "items": [
-    {
-      "provider": "Amadeus",
-      "providerOfferId": "1",
-      "airlineCode": "TP",
-      "airlineName": "TAP Air Portugal",
-      "departureAirportCode": "GIG",
-      "departureTime": "21:30",
-      "departureAt": "2026-08-10T21:30:00",
-      "arrivalAirportCode": "LIS",
-      "arrivalTime": "11:10",
-      "arrivalDate": "2026-08-11",
-      "arrivalAt": "2026-08-11T11:10:00",
-      "stops": 0,
-      "price": {
-        "amount": 4720.50,
-        "currency": "BRL"
-      }
-    }
-  ],
-  "warnings": []
-}
 ```
 
 ### Notes
@@ -159,7 +115,7 @@ dotnet ef migrations list \
 ## Rate Limiting
 Named policies:
 - `auth-strict` for `/api/v1/auth/login`, `/api/v1/auth/register`, `/api/v1/auth/refresh`
-- `search-medium` for `/api/v1/trips/search` and `/api/v1/travel-tickets/search`
+- `search-medium` for `/api/v1/trips/search` and `/api/v1/frontend/travel-tickets/search`
 - `locations-relaxed` for `/api/v1/locations`
 
 ## Local Build/Test
