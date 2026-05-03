@@ -58,7 +58,12 @@ public static class DependencyInjection
         services.AddScoped<DuffelFlightProvider>();
         services.AddScoped<MockLocationProvider>();
         services.AddHttpClient("amadeus", c => c.Timeout = TimeSpan.FromSeconds(20));
-        services.AddHttpClient("duffel", c => c.Timeout = TimeSpan.FromSeconds(20));
+        services.AddHttpClient("duffel", (sp, c) =>
+        {
+            var opts = sp.GetRequiredService<IOptions<DuffelOptions>>().Value;
+            var timeoutSeconds = opts.TimeoutSeconds > 0 ? opts.TimeoutSeconds : 45;
+            c.Timeout = TimeSpan.FromSeconds(timeoutSeconds);
+        });
         services.AddHttpClient();
         return services;
     }

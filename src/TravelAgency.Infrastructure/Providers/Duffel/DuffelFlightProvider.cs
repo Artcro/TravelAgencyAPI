@@ -17,8 +17,10 @@ public sealed class DuffelFlightProvider(IHttpClientFactory factory, IOptions<Du
 
     public async Task<IReadOnlyList<FlightOptionDto>> SearchFlightsAsync(TripSearchRequest request, CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(options.Value.AccessToken)) throw new InvalidOperationException("Duffel access token is not configured.");
+        var settings = options.Value;
+        if (string.IsNullOrWhiteSpace(settings.AccessToken)) throw new InvalidOperationException("Duffel access token is not configured.");
 
+        var timeoutSeconds = settings.TimeoutSeconds > 0 ? settings.TimeoutSeconds : 45;
         var payload = new DuffelOfferRequestEnvelope
         {
             Data = new DuffelOfferRequestData
@@ -26,73 +28,112 @@ public sealed class DuffelFlightProvider(IHttpClientFactory factory, IOptions<Du
                 Slices = BuildSlices(request),
                 Passengers = BuildPassengers(request),
                 CabinClass = MapCabinClass(request.TravelClass),
-                Currency = string.IsNullOrWhiteSpace(request.Currency) ? null : request.Currency
+                Currency = string.IsNullOrWhiteSpace(request.Currency) ? null : request.Currency,
+                SupplierTimeout = settings.SupplierTimeoutMilliseconds > 0 ? settings.SupplierTimeoutMilliseconds : 15_000,
+                MaxConnections = Math.Max(0, settings.MaxConnections),
+                ReturnOffers = settings.UseReturnOffers
             }
         };
 
         var sw = Stopwatch.StartNew();
         var c = factory.CreateClient("duffel");
-        c.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", options.Value.AccessToken);
+        c.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", settings.AccessToken);
         c.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-        c.DefaultRequestHeaders.Add("Duffel-Version", options.Value.Version);
+        c.DefaultRequestHeaders.Add("Duffel-Version", settings.Version);
 
-        var url = $"{options.Value.BaseUrl.TrimEnd('/')}/air/offer_requests";
+        var url = $"{settings.BaseUrl.TrimEnd('/')}/air/offer_requests";
         var bodyContent = JsonSerializer.Serialize(payload);
-        var reqMessage = new HttpRequestMessage(HttpMethod.Post, url)
+
+        try
         {
-            Content = new StringContent(bodyContent, Encoding.UTF8, "application/json")
-        };
-
-        var res = await c.SendAsync(reqMessage, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
-
-        if (res.Content.Headers.ContentLength is long contentLength && contentLength > options.Value.MaxResponseBytes)
-        {
-            await TrySaveProviderRequestLogAsync((int)res.StatusCode, false, $"Duffel response exceeded configured max response bytes ({contentLength} > {options.Value.MaxResponseBytes}).", sw.ElapsedMilliseconds, cancellationToken);
-            throw new InvalidOperationException($"Duffel flights failed ({(int)res.StatusCode}): response too large ({contentLength} bytes).");
-        }
-
-        if (!res.IsSuccessStatusCode)
-        {
-            var errorBody = await ReadAndTruncateErrorBodyAsync(res, cancellationToken);
-            await TrySaveProviderRequestLogAsync((int)res.StatusCode, false, errorBody, sw.ElapsedMilliseconds, cancellationToken);
-            throw new InvalidOperationException($"Duffel flights failed ({(int)res.StatusCode}): {errorBody}");
-        }
-
-        await using var stream = await res.Content.ReadAsStreamAsync(cancellationToken);
-        var response = await JsonSerializer.DeserializeAsync<DuffelOfferResponseEnvelope>(stream, cancellationToken: cancellationToken);
-        await TrySaveProviderRequestLogAsync((int)res.StatusCode, true, null, sw.ElapsedMilliseconds, cancellationToken);
-
-        var offers = response?.Data?.Offers;
-        if (offers is null || offers.Count == 0) return [];
-
-        var results = new List<FlightOptionDto>(offers.Count);
-        foreach (var offer in offers)
-        {
-            var outbound = GetSegments(offer, 0);
-            var inbound = GetSegments(offer, 1);
-            var firstSlice = offer.Slices is { Count: > 0 } ? offer.Slices[0] : null;
-
-            _ = decimal.TryParse(offer.TotalAmount, out var amount);
-
-            var airlineCode = offer.Owner?.IataCode ?? string.Empty;
-            var airlineName = offer.Owner?.Name;
-
-            results.Add(new FlightOptionDto
+            using var reqMessage = new HttpRequestMessage(HttpMethod.Post, url)
             {
-                Provider = "Duffel",
-                ProviderOfferId = offer.Id ?? string.Empty,
-                AirlineCode = airlineCode,
-                AirlineName = airlineName,
-                TotalPrice = new MoneyDto(amount, offer.TotalCurrency ?? request.Currency),
-                Duration = firstSlice?.Duration ?? string.Empty,
-                Stops = Math.Max(0, outbound.Count - 1),
-                OutboundSegments = outbound,
-                ReturnSegments = inbound,
-                DeepLink = null
-            });
-        }
+                Content = new StringContent(bodyContent, Encoding.UTF8, "application/json")
+            };
 
-        return results.Take(Math.Max(1, request.MaxFlightResults)).ToList();
+            using var res = await c.SendAsync(reqMessage, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+
+            if (res.Content.Headers.ContentLength is long contentLength && contentLength > settings.MaxResponseBytes)
+            {
+                await TrySaveProviderRequestLogAsync((int)res.StatusCode, false, $"Duffel response exceeded configured max response bytes ({contentLength} > {settings.MaxResponseBytes}).", sw.ElapsedMilliseconds, cancellationToken);
+                throw new InvalidOperationException($"Duffel flights failed ({(int)res.StatusCode}): response too large ({contentLength} bytes).");
+            }
+
+            if (!res.IsSuccessStatusCode)
+            {
+                var errorBody = await ReadAndTruncateErrorBodyAsync(res, cancellationToken);
+                await TrySaveProviderRequestLogAsync((int)res.StatusCode, false, errorBody, sw.ElapsedMilliseconds, cancellationToken);
+                throw new InvalidOperationException($"Duffel flights failed ({(int)res.StatusCode}): {errorBody}");
+            }
+
+            await using var stream = await res.Content.ReadAsStreamAsync(cancellationToken);
+            var response = await JsonSerializer.DeserializeAsync<DuffelOfferResponseEnvelope>(stream, cancellationToken: cancellationToken);
+
+            var offers = payload.Data.ReturnOffers ? response?.Data?.Offers : null;
+            if (!payload.Data.ReturnOffers)
+            {
+                var offerRequestId = response?.Data?.Id;
+                if (string.IsNullOrWhiteSpace(offerRequestId)) return [];
+
+                var limit = Math.Max(1, settings.MaxOffersToRead);
+                var offersUrl = $"{settings.BaseUrl.TrimEnd('/')}/air/offers?offer_request_id={Uri.EscapeDataString(offerRequestId)}&limit={limit}";
+                using var offersRequest = new HttpRequestMessage(HttpMethod.Get, offersUrl);
+                using var offersResponse = await c.SendAsync(offersRequest, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+                if (!offersResponse.IsSuccessStatusCode)
+                {
+                    var offersErrorBody = await ReadAndTruncateErrorBodyAsync(offersResponse, cancellationToken);
+                    await TrySaveProviderRequestLogAsync((int)offersResponse.StatusCode, false, offersErrorBody, sw.ElapsedMilliseconds, cancellationToken);
+                    throw new InvalidOperationException($"Duffel flights failed ({(int)offersResponse.StatusCode}): {offersErrorBody}");
+                }
+
+                await using var offersStream = await offersResponse.Content.ReadAsStreamAsync(cancellationToken);
+                var offersEnvelope = await JsonSerializer.DeserializeAsync<DuffelListOffersEnvelope>(offersStream, cancellationToken: cancellationToken);
+                offers = offersEnvelope?.Data;
+            }
+
+            await TrySaveProviderRequestLogAsync((int)res.StatusCode, true, null, sw.ElapsedMilliseconds, cancellationToken);
+
+            if (offers is null || offers.Count == 0) return [];
+
+            var results = new List<FlightOptionDto>(offers.Count);
+            foreach (var offer in offers)
+            {
+                var outbound = GetSegments(offer, 0);
+                var inbound = GetSegments(offer, 1);
+                var firstSlice = offer.Slices is { Count: > 0 } ? offer.Slices[0] : null;
+
+                _ = decimal.TryParse(offer.TotalAmount, out var amount);
+
+                var airlineCode = offer.Owner?.IataCode ?? string.Empty;
+                var airlineName = offer.Owner?.Name;
+
+                results.Add(new FlightOptionDto
+                {
+                    Provider = "Duffel",
+                    ProviderOfferId = offer.Id ?? string.Empty,
+                    AirlineCode = airlineCode,
+                    AirlineName = airlineName,
+                    TotalPrice = new MoneyDto(amount, offer.TotalCurrency ?? request.Currency),
+                    Duration = firstSlice?.Duration ?? string.Empty,
+                    Stops = Math.Max(0, outbound.Count - 1),
+                    OutboundSegments = outbound,
+                    ReturnSegments = inbound,
+                    DeepLink = null
+                });
+            }
+
+            return results.Take(Math.Min(Math.Max(1, request.MaxFlightResults), Math.Max(1, settings.MaxOffersToRead))).ToList();
+        }
+        catch (TaskCanceledException ex) when (!cancellationToken.IsCancellationRequested)
+        {
+            var message = $"Duffel flight search timed out after {timeoutSeconds} seconds.";
+            logger.LogWarning(ex, "{Message}", message);
+
+            await TrySaveProviderRequestLogAsync(408, false, message, sw.ElapsedMilliseconds, CancellationToken.None);
+            if (settings.ReturnEmptyOnTimeout) return [];
+
+            throw new InvalidOperationException(message);
+        }
     }
 
     private async Task TrySaveProviderRequestLogAsync(int statusCode, bool success, string? errorMessage, long durationMs, CancellationToken cancellationToken)
@@ -112,7 +153,7 @@ public sealed class DuffelFlightProvider(IHttpClientFactory factory, IOptions<Du
     {
         var body = await response.Content.ReadAsStringAsync(cancellationToken);
         if (string.IsNullOrWhiteSpace(body)) return "No error body returned by provider.";
-        var compact = body.Replace('\n', ' ').Replace('\r', ' ').Trim();
+        var compact = body.Replace('\n', ' ').Replace('\r', ' ').Replace("token", "[redacted]", StringComparison.OrdinalIgnoreCase).Trim();
         return compact.Length <= MaxErrorBodyChars ? compact : compact[..MaxErrorBodyChars] + "... [truncated]";
     }
 

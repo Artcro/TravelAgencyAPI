@@ -9,12 +9,21 @@ public sealed class DuffelOfferRequestData
     [JsonPropertyName("passengers")] public List<DuffelPassengerRequest> Passengers { get; set; } = [];
     [JsonPropertyName("cabin_class")] public string? CabinClass { get; set; }
     [JsonPropertyName("currency")] public string? Currency { get; set; }
+    [JsonPropertyName("supplier_timeout")] public int SupplierTimeout { get; set; }
+    [JsonPropertyName("max_connections")] public int MaxConnections { get; set; }
+    [JsonPropertyName("return_offers")] public bool ReturnOffers { get; set; }
 }
 public sealed class DuffelSliceRequest { [JsonPropertyName("origin")] public string Origin { get; set; } = string.Empty; [JsonPropertyName("destination")] public string Destination { get; set; } = string.Empty; [JsonPropertyName("departure_date")] public string DepartureDate { get; set; } = string.Empty; }
 public sealed class DuffelPassengerRequest { [JsonPropertyName("type")] public string Type { get; set; } = "adult"; }
 
 public sealed class DuffelOfferResponseEnvelope { [JsonPropertyName("data")] public DuffelOfferResponseData? Data { get; set; } }
-public sealed class DuffelOfferResponseData { [JsonPropertyName("offers")] public List<DuffelOffer>? Offers { get; set; } }
+public sealed class DuffelOfferResponseData
+{
+    [JsonPropertyName("id")] public string? Id { get; set; }
+    [JsonPropertyName("offers")] public List<DuffelOffer>? Offers { get; set; }
+}
+
+public sealed class DuffelListOffersEnvelope { [JsonPropertyName("data")] public List<DuffelOffer>? Data { get; set; } }
 public sealed class DuffelOffer
 {
     [JsonPropertyName("id")] public string? Id { get; set; }
