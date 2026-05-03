@@ -182,3 +182,13 @@ Optional legacy Amadeus settings (only when selecting `Amadeus` provider):
 - `Amadeus__ClientSecret`
 
 Hotels and activities remain mocked.
+
+
+## Runtime Safety Notes (Render)
+- Provider request logging is best-effort: provider API flows continue even if `ProviderRequestLogs` persistence fails.
+- Added a repair migration for missing `ProviderRequestLogs` (`AddMissingProviderRequestLogsRepair`) using PostgreSQL-safe `CREATE TABLE IF NOT EXISTS`.
+- Startup migration flow now verifies critical tables (`ProviderRequestLogs`, `TripSearches`, `SavedTrips`, `AuditLogs`) after `Database.Migrate()`.
+- Set `Database__FailStartupOnMissingTables=true` in production to fail fast when critical tables are missing.
+- Duffel non-success responses now include sanitized and truncated provider error details (max 4096 chars) for safer 422 troubleshooting.
+- Duffel success responses are stream-deserialized (`ResponseHeadersRead` + `DeserializeAsync`) to reduce memory pressure and avoid full-body buffering OOMs.
+- Duffel response size guard: set `Duffel__MaxResponseBytes=5242880` (5 MB).

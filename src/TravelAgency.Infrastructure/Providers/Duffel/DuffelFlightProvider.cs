@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using TravelAgency.Application.DTOs.Travel;
 using TravelAgency.Application.Providers;
@@ -10,8 +11,10 @@ using TravelAgency.Infrastructure.Database.Entities;
 
 namespace TravelAgency.Infrastructure.Providers.Duffel;
 
-public sealed class DuffelFlightProvider(IHttpClientFactory factory, IOptions<DuffelOptions> options, TravelDbContext db) : IFlightProvider
+public sealed class DuffelFlightProvider(IHttpClientFactory factory, IOptions<DuffelOptions> options, TravelDbContext db, ILogger<DuffelFlightProvider> logger) : IFlightProvider
 {
+    private const int MaxErrorBodyChars = 4096;
+
     public async Task<IReadOnlyList<FlightOptionDto>> SearchFlightsAsync(TripSearchRequest request, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(options.Value.AccessToken)) throw new InvalidOperationException("Duffel access token is not configured.");
@@ -35,40 +38,53 @@ public sealed class DuffelFlightProvider(IHttpClientFactory factory, IOptions<Du
 
         var url = $"{options.Value.BaseUrl.TrimEnd('/')}/air/offer_requests";
         var bodyContent = JsonSerializer.Serialize(payload);
-        var res = await c.PostAsync(url, new StringContent(bodyContent, Encoding.UTF8, "application/json"), cancellationToken);
-        var body = await res.Content.ReadAsStringAsync(cancellationToken);
+        var reqMessage = new HttpRequestMessage(HttpMethod.Post, url)
+        {
+            Content = new StringContent(bodyContent, Encoding.UTF8, "application/json")
+        };
 
-        db.ProviderRequestLogs.Add(new ProviderRequestLogEntity { Id = Guid.NewGuid(), Provider = "Duffel", Endpoint = "/air/offer_requests", StatusCode = (int)res.StatusCode, Success = res.IsSuccessStatusCode, DurationMs = sw.ElapsedMilliseconds, CreatedAtUtc = DateTime.UtcNow });
-        await db.SaveChangesAsync(cancellationToken);
+        var res = await c.SendAsync(reqMessage, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
 
-        if (!res.IsSuccessStatusCode) throw new InvalidOperationException($"Duffel flights failed ({(int)res.StatusCode}).");
+        if (res.Content.Headers.ContentLength is long contentLength && contentLength > options.Value.MaxResponseBytes)
+        {
+            await TrySaveProviderRequestLogAsync((int)res.StatusCode, false, $"Duffel response exceeded configured max response bytes ({contentLength} > {options.Value.MaxResponseBytes}).", sw.ElapsedMilliseconds, cancellationToken);
+            throw new InvalidOperationException($"Duffel flights failed ({(int)res.StatusCode}): response too large ({contentLength} bytes).");
+        }
 
-        using var doc = JsonDocument.Parse(body);
-        if (!doc.RootElement.TryGetProperty("data", out var data)) return [];
-        if (!data.TryGetProperty("offers", out var offers) || offers.ValueKind != JsonValueKind.Array) return [];
+        if (!res.IsSuccessStatusCode)
+        {
+            var errorBody = await ReadAndTruncateErrorBodyAsync(res, cancellationToken);
+            await TrySaveProviderRequestLogAsync((int)res.StatusCode, false, errorBody, sw.ElapsedMilliseconds, cancellationToken);
+            throw new InvalidOperationException($"Duffel flights failed ({(int)res.StatusCode}): {errorBody}");
+        }
 
-        var results = new List<FlightOptionDto>();
-        foreach (var offer in offers.EnumerateArray())
+        await using var stream = await res.Content.ReadAsStreamAsync(cancellationToken);
+        var response = await JsonSerializer.DeserializeAsync<DuffelOfferResponseEnvelope>(stream, cancellationToken: cancellationToken);
+        await TrySaveProviderRequestLogAsync((int)res.StatusCode, true, null, sw.ElapsedMilliseconds, cancellationToken);
+
+        var offers = response?.Data?.Offers;
+        if (offers is null || offers.Count == 0) return [];
+
+        var results = new List<FlightOptionDto>(offers.Count);
+        foreach (var offer in offers)
         {
             var outbound = GetSegments(offer, 0);
             var inbound = GetSegments(offer, 1);
-            var firstSlice = offer.TryGetProperty("slices", out var slices) && slices.ValueKind == JsonValueKind.Array && slices.GetArrayLength() > 0 ? slices[0] : default;
-            var duration = firstSlice.ValueKind != JsonValueKind.Undefined && firstSlice.TryGetProperty("duration", out var d) ? d.GetString() ?? string.Empty : string.Empty;
+            var firstSlice = offer.Slices is { Count: > 0 } ? offer.Slices[0] : null;
 
-            _ = decimal.TryParse(offer.TryGetProperty("total_amount", out var t) ? t.GetString() : "0", out var amount);
-            var currency = offer.TryGetProperty("total_currency", out var ccy) ? ccy.GetString() ?? request.Currency : request.Currency;
+            _ = decimal.TryParse(offer.TotalAmount, out var amount);
 
-            var airlineCode = offer.TryGetProperty("owner", out var owner) && owner.TryGetProperty("iata_code", out var iata) ? iata.GetString() ?? string.Empty : string.Empty;
-            var airlineName = owner.ValueKind != JsonValueKind.Undefined && owner.TryGetProperty("name", out var name) ? name.GetString() : null;
+            var airlineCode = offer.Owner?.IataCode ?? string.Empty;
+            var airlineName = offer.Owner?.Name;
 
             results.Add(new FlightOptionDto
             {
                 Provider = "Duffel",
-                ProviderOfferId = offer.TryGetProperty("id", out var id) ? id.GetString() ?? string.Empty : string.Empty,
+                ProviderOfferId = offer.Id ?? string.Empty,
                 AirlineCode = airlineCode,
                 AirlineName = airlineName,
-                TotalPrice = new MoneyDto(amount, currency),
-                Duration = duration,
+                TotalPrice = new MoneyDto(amount, offer.TotalCurrency ?? request.Currency),
+                Duration = firstSlice?.Duration ?? string.Empty,
                 Stops = Math.Max(0, outbound.Count - 1),
                 OutboundSegments = outbound,
                 ReturnSegments = inbound,
@@ -79,13 +95,33 @@ public sealed class DuffelFlightProvider(IHttpClientFactory factory, IOptions<Du
         return results.Take(Math.Max(1, request.MaxFlightResults)).ToList();
     }
 
+    private async Task TrySaveProviderRequestLogAsync(int statusCode, bool success, string? errorMessage, long durationMs, CancellationToken cancellationToken)
+    {
+        try
+        {
+            db.ProviderRequestLogs.Add(new ProviderRequestLogEntity { Id = Guid.NewGuid(), Provider = "Duffel", Endpoint = "/air/offer_requests", StatusCode = statusCode, Success = success, ErrorMessage = errorMessage, DurationMs = durationMs, CreatedAtUtc = DateTime.UtcNow });
+            await db.SaveChangesAsync(cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Best-effort provider request logging failed for Duffel. Continuing request processing.");
+        }
+    }
+
+    private static async Task<string> ReadAndTruncateErrorBodyAsync(HttpResponseMessage response, CancellationToken cancellationToken)
+    {
+        var body = await response.Content.ReadAsStringAsync(cancellationToken);
+        if (string.IsNullOrWhiteSpace(body)) return "No error body returned by provider.";
+        var compact = body.Replace('\n', ' ').Replace('\r', ' ').Trim();
+        return compact.Length <= MaxErrorBodyChars ? compact : compact[..MaxErrorBodyChars] + "... [truncated]";
+    }
+
     private static List<DuffelSliceRequest> BuildSlices(TripSearchRequest request)
     {
         var slices = new List<DuffelSliceRequest> { new() { Origin = request.Origin, Destination = request.Destination, DepartureDate = request.DepartureDate.ToString("yyyy-MM-dd") } };
         if (request.ReturnDate.HasValue) slices.Add(new DuffelSliceRequest { Origin = request.Destination, Destination = request.Origin, DepartureDate = request.ReturnDate.Value.ToString("yyyy-MM-dd") });
         return slices;
     }
-
     private static List<DuffelPassengerRequest> BuildPassengers(TripSearchRequest request)
     {
         var passengers = new List<DuffelPassengerRequest>();
@@ -93,37 +129,26 @@ public sealed class DuffelFlightProvider(IHttpClientFactory factory, IOptions<Du
         passengers.AddRange(Enumerable.Range(0, Math.Max(0, request.Children)).Select(_ => new DuffelPassengerRequest { Type = "child" }));
         return passengers;
     }
-
-    private static string? MapCabinClass(string travelClass) => travelClass?.Trim().ToUpperInvariant() switch
-    {
-        "ECONOMY" => "economy",
-        "PREMIUM_ECONOMY" => "premium_economy",
-        "BUSINESS" => "business",
-        "FIRST" => "first",
-        _ => null
-    };
-
-    private static List<TripSegmentDto> GetSegments(JsonElement offer, int index)
+    private static string? MapCabinClass(string travelClass) => travelClass?.Trim().ToUpperInvariant() switch { "ECONOMY" => "economy", "PREMIUM_ECONOMY" => "premium_economy", "BUSINESS" => "business", "FIRST" => "first", _ => null };
+    private static List<TripSegmentDto> GetSegments(DuffelOffer offer, int index)
     {
         var result = new List<TripSegmentDto>();
-        if (!offer.TryGetProperty("slices", out var slices) || slices.ValueKind != JsonValueKind.Array || slices.GetArrayLength() <= index) return result;
-        var slice = slices[index];
-        if (!slice.TryGetProperty("segments", out var segments) || segments.ValueKind != JsonValueKind.Array) return result;
-        foreach (var seg in segments.EnumerateArray())
+        if (offer.Slices is null || offer.Slices.Count <= index) return result;
+        var slice = offer.Slices[index];
+        if (slice.Segments is null) return result;
+        foreach (var seg in slice.Segments)
         {
-            var depart = seg.TryGetProperty("departing_at", out var dep) && DateTime.TryParse(dep.GetString(), out var depAt) ? depAt : default;
-            var arrive = seg.TryGetProperty("arriving_at", out var arr) && DateTime.TryParse(arr.GetString(), out var arrAt) ? arrAt : default;
-            var marketing = seg.TryGetProperty("marketing_carrier", out var mc) ? mc : default;
-            var opNum = seg.TryGetProperty("marketing_carrier_flight_number", out var fn) ? fn.GetString() ?? string.Empty : string.Empty;
+            _ = DateTime.TryParse(seg.DepartingAt, out var depart);
+            _ = DateTime.TryParse(seg.ArrivingAt, out var arrive);
             result.Add(new TripSegmentDto
             {
-                Origin = seg.TryGetProperty("origin", out var o) && o.TryGetProperty("iata_code", out var oi) ? oi.GetString() ?? string.Empty : string.Empty,
-                Destination = seg.TryGetProperty("destination", out var dst) && dst.TryGetProperty("iata_code", out var di) ? di.GetString() ?? string.Empty : string.Empty,
+                Origin = seg.Origin?.IataCode ?? string.Empty,
+                Destination = seg.Destination?.IataCode ?? string.Empty,
                 DepartureAt = depart,
                 ArrivalAt = arrive,
-                CarrierCode = marketing.ValueKind != JsonValueKind.Undefined && marketing.TryGetProperty("iata_code", out var ci) ? ci.GetString() ?? string.Empty : string.Empty,
-                FlightNumber = opNum,
-                Duration = seg.TryGetProperty("duration", out var dur) ? dur.GetString() ?? string.Empty : string.Empty
+                CarrierCode = seg.MarketingCarrier?.IataCode ?? string.Empty,
+                FlightNumber = seg.MarketingCarrierFlightNumber ?? string.Empty,
+                Duration = seg.Duration ?? string.Empty
             });
         }
         return result;
