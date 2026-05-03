@@ -25,7 +25,10 @@ public static class DependencyInjection
         services.Configure<SecurityOptions>(configuration.GetSection(SecurityOptions.SectionName));
         services.Configure<TravelSearchDefaultsOptions>(configuration.GetSection(TravelSearchDefaultsOptions.SectionName));
         services.AddMemoryCache();
-        services.AddDbContext<TravelDbContext>(opt => opt.UseNpgsql(configuration.GetConnectionString("DefaultConnection")));
+        services.AddDbContext<TravelDbContext>(opt =>
+            opt.UseNpgsql(
+                configuration.GetConnectionString("DefaultConnection"),
+                npgsql => npgsql.MigrationsAssembly(typeof(TravelDbContext).Assembly.FullName)));
         services.AddIdentity<ApplicationUser, IdentityRole<Guid>>().AddEntityFrameworkStores<TravelDbContext>().AddDefaultTokenProviders();
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<ITripSearchService, TripSearchService>();
