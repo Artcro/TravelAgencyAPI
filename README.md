@@ -187,6 +187,7 @@ Hotels and activities remain mocked.
 ## Runtime Safety Notes (Render)
 - Provider request logging is best-effort: provider API flows continue even if `ProviderRequestLogs` persistence fails.
 - Added a repair migration for missing `ProviderRequestLogs` (`AddMissingProviderRequestLogsRepair`) using PostgreSQL-safe `CREATE TABLE IF NOT EXISTS`.
+- Troubleshooting: if Render logs show "No migrations were applied" but startup schema verification reports missing tables, `__EFMigrationsHistory` and the actual database schema are out of sync. Fix by adding/committing a repair migration (preferred) or recreating the demo database.
 - Startup migration flow now verifies critical tables (`ProviderRequestLogs`, `TripSearches`, `SavedTrips`, `AuditLogs`) after `Database.Migrate()`.
 - Set `Database__FailStartupOnMissingTables=true` in production to fail fast when critical tables are missing.
 - Duffel non-success responses now include sanitized and truncated provider error details (max 4096 chars) for safer 422 troubleshooting.
