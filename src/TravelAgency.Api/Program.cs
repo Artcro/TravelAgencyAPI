@@ -2,12 +2,14 @@ using System.Text;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using TravelAgency.Api.Middleware;
 using TravelAgency.Api.Options;
 using TravelAgency.Api.Services;
 using TravelAgency.Application.Config;
 using TravelAgency.Application.Travel;
+using TravelAgency.Infrastructure.Database;
 using TravelAgency.Infrastructure.Config;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -76,7 +78,27 @@ builder.Services.AddCors(options =>
 var app = builder.Build();
 app.UseMiddleware<CorrelationIdMiddleware>();
 app.UseMiddleware<ExceptionHandlingMiddleware>();
-if (app.Environment.IsDevelopment()) { app.UseSwagger(); app.UseSwaggerUI(); }
+var swaggerEnabled = app.Configuration.GetValue<bool?>("Swagger:Enabled") ?? app.Environment.IsDevelopment();
+if (swaggerEnabled) { app.UseSwagger(); app.UseSwaggerUI(); }
+
+var applyMigrationsOnStartup = app.Configuration.GetValue<bool>("Database:ApplyMigrationsOnStartup");
+if (applyMigrationsOnStartup)
+{
+    using var scope = app.Services.CreateScope();
+    var logger = scope.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("StartupMigrations");
+    try
+    {
+        var db = scope.ServiceProvider.GetRequiredService<TravelDbContext>();
+        db.Database.Migrate();
+        logger.LogInformation("Database migrations applied successfully on startup.");
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "Failed to apply database migrations on startup.");
+        throw;
+    }
+}
+
 app.UseCors("DefaultCors");
 app.UseRateLimiter();
 app.UseAuthentication();

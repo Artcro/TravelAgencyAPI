@@ -1,7 +1,7 @@
 # TravelAgencyApi
 
 ## Phase 4 Status
-Phase 4 is implemented: a new open/anonymous flight card endpoint was added for frontend ticket UI (`POST /api/v1/travel-tickets/search`), with dedicated request validation, outbound-flight mapping, and tests.
+Phase 4 is implemented with deployment/frontend contract polish: production Swagger toggle, startup migrations toggle, and a frontend-contract endpoint `POST /api/v1/frontend/travel-tickets/search`.
 
 ## Phase 3 Status
 Phase 3 is implemented: migrations setup instructions, saved-trip ownership hardening, service-level test expansion, Amadeus parsing hardening, rate limiting policies, and README operational guidance are in place.
@@ -13,6 +13,63 @@ This endpoint exists specifically for frontend flight/ticket card display protot
 - **Auth:** open/anonymous for now (`[AllowAnonymous]`)
 - **Purpose:** returns simplified flight/ticket cards from the existing flight provider flow
 - **Scope:** no booking, reservation, payment, issuing, cancellation, or refunds
+
+## Frontend Contract Endpoint (Open)
+- **Route:** `POST /api/v1/frontend/travel-tickets/search`
+- **Auth:** open/anonymous (`[AllowAnonymous]`)
+- **Response shape:** raw JSON array (no wrapper object)
+
+Production docs on Render:
+- Swagger UI: https://travelagencyapi-a5zb.onrender.com/swagger
+- OpenAPI JSON: https://travelagencyapi-a5zb.onrender.com/swagger/v1/swagger.json
+
+### Example Request (origin + destination + dates)
+```json
+{
+  "origin": "GRU",
+  "destination": "JFK",
+  "departureDate": "2026-05-10",
+  "returnDate": "2026-05-20",
+  "adults": 1,
+  "children": 0,
+  "infants": 0,
+  "currency": "BRL",
+  "travelClass": "ECONOMY",
+  "maxResults": 10
+}
+```
+
+### Example Request (destination + date only, using configured default origin)
+```json
+{
+  "destination": "JFK",
+  "departureDate": "2026-05-10"
+}
+```
+
+### Example Response (frontend field names)
+```json
+[
+  {
+    "id": 1,
+    "ciaAerea": "LATAM",
+    "horaPartidaIda": "08:30",
+    "aeroPartidaIda": "GRU",
+    "dataPartidaIda": "2026-05-10",
+    "horaChegadaIda": "12:00",
+    "aeroChegadaIda": "JFK",
+    "dataChegadaIda": "2026-05-10",
+    "horaPartidaVolta": "15:00",
+    "aeroPartidaVolta": "JFK",
+    "dataPartidaVolta": "2026-05-20",
+    "horaChegadaVolta": "22:00",
+    "aeroChegadaVolta": "GRU",
+    "dataChegadaVolta": "2026-05-20",
+    "paradas": 0,
+    "valor": 3500.0
+  }
+]
+```
 
 ### Example Request
 ```json
@@ -136,6 +193,9 @@ Flights and locations use Amadeus. Hotels and activities remain mocked.
    - `ConnectionStrings__DefaultConnection`
    - `Cors__AllowAnyOrigin`
    - `Cors__AllowedOrigins__0`
+   - `Swagger__Enabled=true`
+   - `Database__ApplyMigrationsOnStartup=true`
+   - `TravelSearchDefaults__DefaultOrigin=GRU`
 5. Create or connect a Render PostgreSQL instance, and use the internal database URL/connection string where possible for `ConnectionStrings__DefaultConnection`.
 6. Run EF Core migrations either locally (against the target DB) or from a secure shell/one-off environment that can reach the Render database.
 7. Set production Amadeus credentials in Render (`Amadeus__ClientId`, `Amadeus__ClientSecret`).
