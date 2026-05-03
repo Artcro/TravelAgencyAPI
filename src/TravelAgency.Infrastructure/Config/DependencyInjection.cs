@@ -23,6 +23,7 @@ public static class DependencyInjection
         services.Configure<TravelProvidersOptions>(configuration.GetSection(TravelProvidersOptions.SectionName));
         services.Configure<DuffelOptions>(configuration.GetSection(DuffelOptions.SectionName));
         services.Configure<SecurityOptions>(configuration.GetSection(SecurityOptions.SectionName));
+        services.Configure<TravelSearchDefaultsOptions>(configuration.GetSection(TravelSearchDefaultsOptions.SectionName));
         services.AddMemoryCache();
         services.AddDbContext<TravelDbContext>(opt => opt.UseNpgsql(configuration.GetConnectionString("DefaultConnection")));
         services.AddIdentity<ApplicationUser, IdentityRole<Guid>>().AddEntityFrameworkStores<TravelDbContext>().AddDefaultTokenProviders();
@@ -30,6 +31,7 @@ public static class DependencyInjection
         services.AddScoped<ITripSearchService, TripSearchService>();
         services.AddScoped<ISavedTripService, SavedTripService>();
         services.AddScoped<ITravelTicketService, TravelTicketService>();
+        services.AddScoped<IFrontendTravelTicketService, FrontendTravelTicketService>();
         services.AddScoped<ILocationProvider>(sp =>
         {
             var providers = sp.GetRequiredService<IOptions<TravelProvidersOptions>>().Value;
