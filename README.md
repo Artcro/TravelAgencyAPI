@@ -12,6 +12,23 @@ Phase 3 is implemented: migrations setup instructions, saved-trip ownership hard
 - **Response shape:** raw JSON array (no wrapper object)
 
 
+## Frontend ticket search endpoints
+
+### POST `/api/v1/frontend/travel-tickets/search`
+Use when sending full structured JSON (complete criteria including `criancas`, `bebes`, and `moeda`).
+
+### GET `/api/v1/frontend/travel-tickets/search`
+Use for simple browser/frontend tests with query string parameters.
+
+Examples:
+- `GET /api/v1/frontend/travel-tickets/search?destino=JFK&dataIda=2026-05-10`
+- `GET /api/v1/frontend/travel-tickets/search?origem=GRU&destino=JFK&dataIda=2026-05-10&dataVolta=2026-05-20&maxResultados=6`
+
+Notes:
+- GET does **not** accept JSON body.
+- GET uses URL parameters only.
+- POST remains the main endpoint for full search criteria.
+
 ## Broader Trips Endpoint
 - **Route:** `POST /api/v1/trips/search`
 - **Purpose:** broader aggregate trip search including flights, mocked hotels, and mocked activities.

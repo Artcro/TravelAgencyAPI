@@ -40,6 +40,17 @@ public sealed class FrontendTravelTicketSearchRequest
 	public int MaxResultados { get; set; } = 10;
 }
 
+public sealed class FrontendTravelTicketQueryRequest
+{
+	public string? Origem { get; set; }
+	public string Destino { get; set; } = "";
+	public DateOnly DataIda { get; set; } = DateOnly.FromDateTime(DateTime.UtcNow.Date);
+	public DateOnly? DataVolta { get; set; }
+	public int? Adultos { get; set; }
+	public string? Classe { get; set; }
+	public int? MaxResultados { get; set; }
+}
+
 public sealed class FrontendTravelTicketDto
 {
 	[JsonPropertyName("id")]
