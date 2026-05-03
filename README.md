@@ -132,6 +132,15 @@ Configure `Amadeus` values (`BaseUrl`, `ClientId`, `ClientSecret`) in environmen
 ## Provider Notes
 Flights and locations use Amadeus. Hotels and activities remain mocked.
 
+### Render/Free-tier Duffel timeout tuning
+- `Duffel__TimeoutSeconds` controls API-side `HttpClient.Timeout` (default `45`).
+- `Duffel__SupplierTimeoutMilliseconds` is sent to Duffel `supplier_timeout` (default `15000`). Keep it lower than `Duffel__TimeoutSeconds` so Duffel can return partial results before the API times out.
+- `Duffel__MaxConnections=1` (or `0` for direct-only) reduces heavy connection searches on slow tiers.
+- `Duffel__MaxOffersToRead=10` limits mapped offers from the first Duffel list-offers page for faster response.
+- `Duffel__ReturnEmptyOnTimeout=true` lets the frontend endpoint return `[]` during provider timeout spikes in demos.
+
+Troubleshooting: if logs show `The request was canceled due to the configured HttpClient.Timeout...`, increase `Duffel__TimeoutSeconds` and keep `Duffel__SupplierTimeoutMilliseconds` below it.
+
 ## Deploying to Render
 1. In Render, create a **Web Service** and connect your GitHub repository.
 2. Select the branch you want to deploy.
@@ -175,6 +184,12 @@ Amadeus Self-Service is now legacy/optional for new demos. Default flight provid
 - `Duffel__BaseUrl=https://api.duffel.com`
 - `Duffel__AccessToken=<duffel_test_token>`
 - `Duffel__Version=v2`
+- `Duffel__TimeoutSeconds=45`
+- `Duffel__SupplierTimeoutMilliseconds=15000`
+- `Duffel__MaxConnections=1`
+- `Duffel__MaxOffersToRead=10`
+- `Duffel__ReturnEmptyOnTimeout=true`
+- `Duffel__UseReturnOffers=false`
 
 Optional legacy Amadeus settings (only when selecting `Amadeus` provider):
 - `Amadeus__BaseUrl`
@@ -182,6 +197,15 @@ Optional legacy Amadeus settings (only when selecting `Amadeus` provider):
 - `Amadeus__ClientSecret`
 
 Hotels and activities remain mocked.
+
+### Render/Free-tier Duffel timeout tuning
+- `Duffel__TimeoutSeconds` controls API-side `HttpClient.Timeout` (default `45`).
+- `Duffel__SupplierTimeoutMilliseconds` is sent to Duffel `supplier_timeout` (default `15000`). Keep it lower than `Duffel__TimeoutSeconds` so Duffel can return partial results before the API times out.
+- `Duffel__MaxConnections=1` (or `0` for direct-only) reduces heavy connection searches on slow tiers.
+- `Duffel__MaxOffersToRead=10` limits mapped offers from the first Duffel list-offers page for faster response.
+- `Duffel__ReturnEmptyOnTimeout=true` lets the frontend endpoint return `[]` during provider timeout spikes in demos.
+
+Troubleshooting: if logs show `The request was canceled due to the configured HttpClient.Timeout...`, increase `Duffel__TimeoutSeconds` and keep `Duffel__SupplierTimeoutMilliseconds` below it.
 
 
 ## Runtime Safety Notes (Render)
