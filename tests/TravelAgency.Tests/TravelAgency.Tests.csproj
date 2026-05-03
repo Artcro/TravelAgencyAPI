@@ -25,6 +25,7 @@
 
     <ItemGroup>
         <ProjectReference Include="..\..\src\TravelAgency.Application\TravelAgency.Application.csproj"/>
+        <ProjectReference Include="..\..\src\TravelAgency.Api\TravelAgency.Api.csproj"/>
         <ProjectReference Include="..\..\src\TravelAgency.Infrastructure\TravelAgency.Infrastructure.csproj"/>
     </ItemGroup>
 
