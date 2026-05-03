@@ -19,3 +19,28 @@ public sealed class MockActivityProvider : IActivityProvider
         new() { Provider="Mock", ProviderActivityId="A3", Title=$"Museum pass {request.Destination}", Description="Top museums", Price=new MoneyDto(75, request.Currency) }
     ]);
 }
+
+public sealed class MockLocationProvider : ILocationProvider
+{
+    private static readonly List<LocationSuggestionDto> Seed =
+    [
+        new("RIO", "Rio de Janeiro", "CITY", "BR", "Rio de Janeiro (RIO)"),
+        new("GIG", "Rio de Janeiro/Galeao", "AIRPORT", "BR", "Rio de Janeiro/Galeao (GIG)"),
+        new("SAO", "Sao Paulo", "CITY", "BR", "Sao Paulo (SAO)"),
+        new("LIS", "Lisbon", "CITY", "PT", "Lisbon (LIS)"),
+        new("LON", "London", "CITY", "GB", "London (LON)"),
+        new("PAR", "Paris", "CITY", "FR", "Paris (PAR)"),
+        new("NYC", "New York", "CITY", "US", "New York (NYC)"),
+        new("MIA", "Miami", "CITY", "US", "Miami (MIA)"),
+        new("MAD", "Madrid", "CITY", "ES", "Madrid (MAD)"),
+        new("BUE", "Buenos Aires", "CITY", "AR", "Buenos Aires (BUE)")
+    ];
+
+    public Task<IReadOnlyList<LocationSuggestionDto>> SearchLocationsAsync(string query, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(query)) return Task.FromResult<IReadOnlyList<LocationSuggestionDto>>([]);
+        var q = query.Trim().ToLowerInvariant();
+        var items = Seed.Where(x => x.DisplayName.ToLowerInvariant().Contains(q) || x.Code.ToLowerInvariant().Contains(q) || x.Name.ToLowerInvariant().Contains(q)).Take(8).ToList();
+        return Task.FromResult<IReadOnlyList<LocationSuggestionDto>>(items);
+    }
+}

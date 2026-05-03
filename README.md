@@ -147,3 +147,21 @@ Use `.env.example` as a template for local/Render variable names only. Never com
 - For local demo/development, `Cors__AllowAnyOrigin=true` is convenient.
 - For production, set `Cors__AllowAnyOrigin=false` and explicitly configure allowed frontend domains with `Cors__AllowedOrigins__0`, `Cors__AllowedOrigins__1`, etc.
 - When `Cors__AllowAnyOrigin=true`, the API uses `AllowAnyOrigin + AllowAnyHeader + AllowAnyMethod` and does not use credentials mode.
+
+
+## Flight Provider Defaults (Duffel)
+Amadeus Self-Service is now legacy/optional for new demos. Default flight provider is **Duffel** test mode and default location provider is **Mock** for easier deployment.
+
+### Render environment variables
+- `TravelProviders__FlightProvider=Duffel`
+- `TravelProviders__LocationProvider=Mock`
+- `Duffel__BaseUrl=https://api.duffel.com`
+- `Duffel__AccessToken=<duffel_test_token>`
+- `Duffel__Version=v2`
+
+Optional legacy Amadeus settings (only when selecting `Amadeus` provider):
+- `Amadeus__BaseUrl`
+- `Amadeus__ClientId`
+- `Amadeus__ClientSecret`
+
+Hotels and activities remain mocked.
