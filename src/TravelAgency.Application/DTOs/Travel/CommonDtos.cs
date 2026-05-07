@@ -1,8 +1,29 @@
+using System.Text.Json.Serialization;
+
 namespace TravelAgency.Application.DTOs.Travel;
 
 public record MoneyDto(decimal Amount, string Currency);
 
-public record LocationSuggestionDto(string Code, string Name, string Type, string CountryCode, string DisplayName);
+public record LocationSuggestionDto(
+	string Code,
+	string Name,
+	string Type,
+	string CountryCode,
+	string DisplayName,
+	string? City = null,
+	string? CountryName = null);
+
+public sealed class AirportAutocompleteDto
+{
+	[JsonPropertyName("iata")]
+	public string Iata { get; set; } = "";
+	[JsonPropertyName("cidade")]
+	public string Cidade { get; set; } = "";
+	[JsonPropertyName("pais")]
+	public string Pais { get; set; } = "";
+	[JsonPropertyName("nome")]
+	public string Nome { get; set; } = "";
+}
 
 public record LocationSummaryDto(string Code, string Name);
 

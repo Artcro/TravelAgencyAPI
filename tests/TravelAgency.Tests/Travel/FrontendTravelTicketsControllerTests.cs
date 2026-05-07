@@ -12,10 +12,13 @@ public sealed class FrontendTravelTicketsControllerTests
 	{
 		var service = new CapturingFrontendService();
 		var sut = new FrontendTravelTicketsController(service);
+		var departure = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(10));
 		var query = new FrontendTravelTicketQueryRequest
 		{
+			Origem = "GRU",
 			Destino = "JFK",
-			DataIda = new DateOnly(2026, 5, 10)
+			DataPartida = departure.ToString("yyyy-MM-dd"),
+			Adultos = "1"
 		};
 
 		var result = await sut.SearchGet(query, CancellationToken.None);
@@ -24,8 +27,8 @@ public sealed class FrontendTravelTicketsControllerTests
 		Assert.Same(service.Response, ok.Value);
 		Assert.NotNull(service.LastRequest);
 		Assert.Equal("JFK", service.LastRequest!.Destino);
-		Assert.Equal(new DateOnly(2026, 5, 10), service.LastRequest.DataIda);
-		Assert.Null(service.LastRequest.Origem);
+		Assert.Equal(departure, service.LastRequest.DataIda);
+		Assert.Equal("GRU", service.LastRequest.Origem);
 		Assert.Equal(1, service.LastRequest.Adultos);
 		Assert.Equal("ECONOMY", service.LastRequest.Classe);
 		Assert.Equal(10, service.LastRequest.MaxResultados);
@@ -39,25 +42,48 @@ public sealed class FrontendTravelTicketsControllerTests
 	{
 		var service = new CapturingFrontendService();
 		var sut = new FrontendTravelTicketsController(service);
+		var departure = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(10));
+		var returnDate = departure.AddDays(10);
 		var query = new FrontendTravelTicketQueryRequest
 		{
 			Origem = "GRU",
 			Destino = "JFK",
-			DataIda = new DateOnly(2026, 5, 10),
-			DataVolta = new DateOnly(2026, 5, 20),
-			Adultos = 2,
+			DataPartida = departure.ToString("yyyy-MM-dd"),
+			DataVolta = returnDate.ToString("yyyy-MM-dd"),
+			Adultos = "2",
+			Criancas = "1",
 			Classe = "BUSINESS",
-			MaxResultados = 6
+			MaxResultados = "6"
 		};
 
 		await sut.SearchGet(query, CancellationToken.None);
 
 		Assert.NotNull(service.LastRequest);
 		Assert.Equal("GRU", service.LastRequest!.Origem);
-		Assert.Equal(new DateOnly(2026, 5, 20), service.LastRequest.DataVolta);
+		Assert.Equal(returnDate, service.LastRequest.DataVolta);
 		Assert.Equal(2, service.LastRequest.Adultos);
+		Assert.Equal(1, service.LastRequest.Criancas);
 		Assert.Equal("BUSINESS", service.LastRequest.Classe);
 		Assert.Equal(6, service.LastRequest.MaxResultados);
+	}
+
+	[Fact]
+	public async Task SearchGet_Invalid_Query_Returns_Error_Object()
+	{
+		var service = new CapturingFrontendService();
+		var sut = new FrontendTravelTicketsController(service);
+
+		var result = await sut.SearchGet(new FrontendTravelTicketQueryRequest
+		{
+			Origem = "GRU",
+			Destino = "GRU",
+			DataPartida = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(10)).ToString("yyyy-MM-dd"),
+			Adultos = "1"
+		}, CancellationToken.None);
+
+		var badRequest = Assert.IsType<BadRequestObjectResult>(result.Result);
+		Assert.Equal("{ error = origem and destino must differ }", badRequest.Value!.ToString());
+		Assert.Null(service.LastRequest);
 	}
 
 	[Fact]

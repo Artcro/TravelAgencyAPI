@@ -32,7 +32,7 @@ public class FrontendTravelTicketServiceTests
 		var item = Assert.Single(await service.SearchAsync(ValidRequest(), default));
 		Assert.Equal("LATAM", item.CiaAerea);
 		Assert.Equal("08:30", item.HoraPartidaIda);
-		Assert.Null(item.HoraPartidaVolta);
+		Assert.Equal("", item.HoraPartidaVolta);
 		Assert.Equal(0, item.Paradas);
 	}
 

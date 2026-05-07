@@ -1,28 +1,51 @@
 # TravelAgencyApi
 
 ## Phase 4 Status
-Phase 4 is implemented with deployment/frontend contract polish: production Swagger toggle, startup migrations toggle, and a frontend-contract endpoint `POST /api/v1/frontend/travel-tickets/search`.
+Phase 4 is implemented with deployment contract polish: production Swagger toggle, startup migrations toggle, and raw-array travel ticket endpoints.
 
 ## Phase 3 Status
 Phase 3 is implemented: migrations setup instructions, saved-trip ownership hardening, service-level test expansion, Amadeus parsing hardening, rate limiting policies, and README operational guidance are in place.
 
-## Frontend Contract Endpoint (Open)
-- **Route:** `POST /api/v1/frontend/travel-tickets/search`
+## Public Contract Endpoints (Open)
+- **Airport autocomplete:** `GET /api/v1/airports/search`
+- **Ticket search:** `GET /api/v1/travel-tickets/search`
+- **Ticket search JSON:** `POST /api/v1/travel-tickets/search`
 - **Auth:** open/anonymous (`[AllowAnonymous]`)
 - **Response shape:** raw JSON array (no wrapper object)
 
 
-## Frontend ticket search endpoints
+## Airport autocomplete endpoint
 
-### POST `/api/v1/frontend/travel-tickets/search`
-Use when sending full structured JSON (complete criteria including `criancas`, `bebes`, and `moeda`).
-
-### GET `/api/v1/frontend/travel-tickets/search`
-Use for simple browser/frontend tests with query string parameters.
+### GET `/api/v1/airports/search`
+Use for origin/destination typeahead.
 
 Examples:
-- `GET /api/v1/frontend/travel-tickets/search?destino=JFK&dataIda=2026-05-10`
-- `GET /api/v1/frontend/travel-tickets/search?origem=GRU&destino=JFK&dataIda=2026-05-10&dataVolta=2026-05-20&maxResultados=6`
+- `GET /api/v1/airports/search?q=sao`
+- `GET /api/v1/airports/search?q=GRU&limit=5`
+
+Response:
+```json
+[
+  {
+    "iata": "GRU",
+    "cidade": "São Paulo",
+    "pais": "Brasil",
+    "nome": "Aeroporto Internacional de Guarulhos"
+  }
+]
+```
+
+## Ticket search endpoints
+
+### POST `/api/v1/travel-tickets/search`
+Use when sending full structured JSON (complete criteria including `criancas`, `bebes`, and `moeda`).
+
+### GET `/api/v1/travel-tickets/search`
+Use for simple browser/app tests with query string parameters.
+
+Examples:
+- `GET /api/v1/travel-tickets/search?origem=GRU&destino=JFK&dataPartida=2026-05-10&adultos=1&criancas=0`
+- `GET /api/v1/travel-tickets/search?origem=GRU&destino=JFK&dataPartida=2026-05-10&dataVolta=2026-05-20&adultos=2&criancas=1&maxResultados=6`
 
 Notes:
 - GET does **not** accept JSON body.
@@ -54,12 +77,15 @@ Production docs on Render:
 }
 ```
 
-### Example Request (atalho com destino + dataIda, usando origem padrão configurada)
+### Example GET Request
 ```json
 {
+  "origem": "GRU",
   "destino": "JFK",
-  "dataIda": "2026-05-10",
-  "dataVolta": "2026-05-20"
+  "dataPartida": "2026-05-10",
+  "dataVolta": "2026-05-20",
+  "adultos": 1,
+  "criancas": 0
 }
 ```
 
@@ -133,8 +159,8 @@ dotnet ef migrations list \
 ## Rate Limiting
 Named policies:
 - `auth-strict` for `/api/v1/auth/login`, `/api/v1/auth/register`, `/api/v1/auth/refresh`
-- `search-medium` for `/api/v1/trips/search` and `/api/v1/frontend/travel-tickets/search`
-- `locations-relaxed` for `/api/v1/locations`
+- `search-medium` for `/api/v1/trips/search` and `/api/v1/travel-tickets/search`
+- `locations-relaxed` for `/api/v1/airports/search` and legacy `/api/v1/locations`
 
 ## Local Build/Test
 ```bash
@@ -144,10 +170,23 @@ dotnet test TravelAgencyApi.sln
 ```
 
 ## Amadeus Setup Reminder
-Configure `Amadeus` values (`BaseUrl`, `ClientId`, `ClientSecret`) in environment/app settings before running live provider flows.
+Configure `Amadeus` values (`BaseUrl`, `ClientId`, `ClientSecret`) in environment/app settings before running legacy Amadeus provider flows.
 
 ## Provider Notes
-Flights and locations use Amadeus. Hotels and activities remain mocked.
+Flights use Duffel by default. Locations use the local airport database backed by OurAirports CSV sync. Hotels and activities remain mocked.
+
+## Airport Data Cache
+The airport autocomplete endpoint uses the `Airports` table for `/api/v1/airports/search`, avoiding external autocomplete calls.
+
+Startup behavior:
+- `AirportDataSync__Enabled=true` enables the background sync service.
+- `AirportDataSync__SyncOnStartup=true` checks the table shortly after startup.
+- Sync runs when the table is empty, below `AirportDataSync__MinimumAirportCount`, missing records compared with the previous successful sync, or older than `AirportDataSync__RefreshIntervalHours`.
+- The importer downloads OurAirports `airports.csv` and `countries.csv`, imports IATA-coded non-closed airports, upserts by IATA code, and marks disappeared records inactive.
+
+Default source URLs:
+- `https://davidmegginson.github.io/ourairports-data/airports.csv`
+- `https://davidmegginson.github.io/ourairports-data/countries.csv`
 
 ### Render/Free-tier Duffel timeout tuning
 - `Duffel__TimeoutSeconds` controls API-side `HttpClient.Timeout` (default `45`).
@@ -178,6 +217,9 @@ Troubleshooting: if logs show `The request was canceled due to the configured Ht
    - `Cors__AllowedOrigins__0`
    - `Swagger__Enabled=true`
    - `Database__ApplyMigrationsOnStartup=true`
+   - `AirportDataSync__Enabled=true`
+   - `AirportDataSync__SyncOnStartup=true`
+   - `AirportDataSync__RefreshIntervalHours=24`
    - `TravelSearchDefaults__DefaultOrigin=GRU`
 5. Create or connect a Render PostgreSQL instance, and use the internal database URL/connection string where possible for `ConnectionStrings__DefaultConnection`.
 6. Run EF Core migrations either locally (against the target DB) or from a secure shell/one-off environment that can reach the Render database.
@@ -193,11 +235,11 @@ Use `.env.example` as a template for local/Render variable names only. Never com
 
 
 ## Flight Provider Defaults (Duffel)
-Amadeus Self-Service is now legacy/optional for new demos. Default flight provider is **Duffel** test mode and default location provider is **Mock** for easier deployment.
+Amadeus Self-Service is now legacy/optional for new demos. Default flight provider is **Duffel** test mode and default location provider is the **Local** airport database.
 
 ### Render environment variables
 - `TravelProviders__FlightProvider=Duffel`
-- `TravelProviders__LocationProvider=Mock`
+- `TravelProviders__LocationProvider=Local`
 - `Duffel__BaseUrl=https://api.duffel.com`
 - `Duffel__AccessToken=<duffel_test_token>`
 - `Duffel__Version=v2`
@@ -207,6 +249,11 @@ Amadeus Self-Service is now legacy/optional for new demos. Default flight provid
 - `Duffel__MaxOffersToRead=10`
 - `Duffel__ReturnEmptyOnTimeout=true`
 - `Duffel__UseReturnOffers=false`
+- `AirportDataSync__Enabled=true`
+- `AirportDataSync__SyncOnStartup=true`
+- `AirportDataSync__RefreshIntervalHours=24`
+- `AirportDataSync__PeriodicCheckHours=6`
+- `AirportDataSync__MinimumAirportCount=5000`
 
 Optional legacy Amadeus settings (only when selecting `Amadeus` provider):
 - `Amadeus__BaseUrl`

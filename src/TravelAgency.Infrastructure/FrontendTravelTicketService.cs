@@ -89,12 +89,12 @@ public sealed class FrontendTravelTicketService(
 				HoraChegadaIda = idaLast.ArrivalAt.ToString("HH:mm"),
 				AeroChegadaIda = idaLast.Destination,
 				DataChegadaIda = idaLast.ArrivalAt.ToString("yyyy-MM-dd"),
-				HoraPartidaVolta = returnFirst?.DepartureAt.ToString("HH:mm"),
-				AeroPartidaVolta = returnFirst?.Origin,
-				DataPartidaVolta = returnFirst?.DepartureAt.ToString("yyyy-MM-dd"),
-				HoraChegadaVolta = returnLast?.ArrivalAt.ToString("HH:mm"),
-				AeroChegadaVolta = returnLast?.Destination,
-				DataChegadaVolta = returnLast?.ArrivalAt.ToString("yyyy-MM-dd"),
+				HoraPartidaVolta = returnFirst?.DepartureAt.ToString("HH:mm") ?? "",
+				AeroPartidaVolta = returnFirst?.Origin ?? "",
+				DataPartidaVolta = returnFirst?.DepartureAt.ToString("yyyy-MM-dd") ?? "",
+				HoraChegadaVolta = returnLast?.ArrivalAt.ToString("HH:mm") ?? "",
+				AeroChegadaVolta = returnLast?.Destination ?? "",
+				DataChegadaVolta = returnLast?.ArrivalAt.ToString("yyyy-MM-dd") ?? "",
 				Paradas = flight.OutboundSegments.Count > 0
 					? Math.Max(flight.OutboundSegments.Count - 1, 0)
 					: Math.Max(flight.Stops, 0),

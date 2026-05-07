@@ -11,7 +11,9 @@ using TravelAgency.Infrastructure.Database.Entities;
 using TravelAgency.Infrastructure.Options;
 using TravelAgency.Infrastructure.Providers.Amadeus;
 using TravelAgency.Infrastructure.Providers.Duffel;
+using TravelAgency.Infrastructure.Providers.Local;
 using TravelAgency.Infrastructure.Providers.Mock;
+using TravelAgency.Infrastructure.Services.Airports;
 
 namespace TravelAgency.Infrastructure.Config;
 
@@ -22,6 +24,7 @@ public static class DependencyInjection
 		services.Configure<AmadeusOptions>(configuration.GetSection(AmadeusOptions.SectionName));
 		services.Configure<TravelProvidersOptions>(configuration.GetSection(TravelProvidersOptions.SectionName));
 		services.Configure<DuffelOptions>(configuration.GetSection(DuffelOptions.SectionName));
+		services.Configure<AirportDataSyncOptions>(configuration.GetSection(AirportDataSyncOptions.SectionName));
 		services.Configure<SecurityOptions>(configuration.GetSection(SecurityOptions.SectionName));
 		services.Configure<TravelSearchDefaultsOptions>(
 			configuration.GetSection(TravelSearchDefaultsOptions.SectionName));
@@ -44,6 +47,8 @@ public static class DependencyInjection
 			var providers = sp.GetRequiredService<IOptions<TravelProvidersOptions>>().Value;
 			var amadeus = sp.GetRequiredService<IOptions<AmadeusOptions>>().Value;
 			var location = providers.LocationProvider;
+			if (IsLocalLocationProvider(location)) return sp.GetRequiredService<LocalAirportLocationProvider>();
+
 			if (string.Equals(location, "Amadeus", StringComparison.OrdinalIgnoreCase) &&
 			    !string.IsNullOrWhiteSpace(amadeus.ClientId) && !string.IsNullOrWhiteSpace(amadeus.ClientSecret))
 				return sp.GetRequiredService<AmadeusLocationProvider>();
@@ -65,7 +70,10 @@ public static class DependencyInjection
 		services.AddScoped<AmadeusLocationProvider>();
 		services.AddScoped<AmadeusFlightProvider>();
 		services.AddScoped<DuffelFlightProvider>();
+		services.AddScoped<LocalAirportLocationProvider>();
 		services.AddScoped<MockLocationProvider>();
+		services.AddScoped<IAirportDataSyncService, OurAirportsDataSyncService>();
+		services.AddHostedService<OurAirportsSyncHostedService>();
 		services.AddHttpClient("amadeus", c => c.Timeout = TimeSpan.FromSeconds(20));
 		services.AddHttpClient("duffel", (sp, c) =>
 		{
@@ -73,8 +81,21 @@ public static class DependencyInjection
 			var timeoutSeconds = opts.TimeoutSeconds > 0 ? opts.TimeoutSeconds : 45;
 			c.Timeout = TimeSpan.FromSeconds(timeoutSeconds);
 		});
+		services.AddHttpClient("ourairports", (sp, c) =>
+		{
+			var opts = sp.GetRequiredService<IOptions<AirportDataSyncOptions>>().Value;
+			c.Timeout = TimeSpan.FromSeconds(Math.Max(15, opts.RequestTimeoutSeconds));
+			c.DefaultRequestHeaders.UserAgent.ParseAdd("TravelAgencyAPI/1.0");
+		});
 
 		services.AddHttpClient();
 		return services;
+	}
+
+	private static bool IsLocalLocationProvider(string provider)
+	{
+		return string.Equals(provider, "Local", StringComparison.OrdinalIgnoreCase) ||
+		       string.Equals(provider, "Database", StringComparison.OrdinalIgnoreCase) ||
+		       string.Equals(provider, "OurAirports", StringComparison.OrdinalIgnoreCase);
 	}
 }

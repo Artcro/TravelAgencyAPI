@@ -110,7 +110,10 @@ if (applyMigrationsOnStartup)
 		db.Database.Migrate();
 		logger.LogInformation("Database migrations applied successfully on startup.");
 
-		var requiredTables = new[] { "ProviderRequestLogs", "TripSearches", "SavedTrips", "AuditLogs" };
+		var requiredTables = new[]
+		{
+			"ProviderRequestLogs", "TripSearches", "SavedTrips", "AuditLogs", "Airports", "AirportDataSyncStatuses"
+		};
 		var missingTables = new List<string>();
 		foreach (var table in requiredTables)
 		{

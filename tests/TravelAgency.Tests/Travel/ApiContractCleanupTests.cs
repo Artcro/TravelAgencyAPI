@@ -1,4 +1,6 @@
 using System.Text.Json;
+using Microsoft.AspNetCore.Mvc;
+using TravelAgency.Api.Controllers;
 using TravelAgency.Application.DTOs.Travel;
 
 namespace TravelAgency.Tests.Travel;
@@ -110,5 +112,26 @@ public class ApiContractCleanupTests
 	{
 		var root = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../.."));
 		Assert.True(File.Exists(Path.Combine(root, "src", "TravelAgency.Api", "Controllers", "TripsController.cs")));
+	}
+
+	[Fact]
+	public void Public_Contract_Routes_Do_Not_Use_Frontend_Prefix()
+	{
+		var ticketsRoute = typeof(FrontendTravelTicketsController)
+			.GetCustomAttributes(typeof(RouteAttribute), false)
+			.Cast<RouteAttribute>()
+			.Single()
+			.Template;
+
+		var airportsRoute = typeof(AirportsController)
+			.GetCustomAttributes(typeof(RouteAttribute), false)
+			.Cast<RouteAttribute>()
+			.Single()
+			.Template;
+
+		Assert.Equal("api/v1/travel-tickets", ticketsRoute);
+		Assert.Equal("api/v1/airports", airportsRoute);
+		Assert.DoesNotContain("/frontend", ticketsRoute, StringComparison.OrdinalIgnoreCase);
+		Assert.DoesNotContain("/frontend", airportsRoute, StringComparison.OrdinalIgnoreCase);
 	}
 }

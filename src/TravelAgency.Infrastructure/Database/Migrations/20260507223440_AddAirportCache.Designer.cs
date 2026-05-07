@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using TravelAgency.Infrastructure.Database;
@@ -11,9 +12,11 @@ using TravelAgency.Infrastructure.Database;
 namespace TravelAgency.Infrastructure.Database.Migrations
 {
     [DbContext(typeof(TravelDbContext))]
-    partial class TravelDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260507223440_AddAirportCache")]
+    partial class AddAirportCache
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -192,9 +195,6 @@ namespace TravelAgency.Infrastructure.Database.Migrations
                     b.Property<string>("City")
                         .HasColumnType("text");
 
-                    b.Property<string>("CitySearch")
-                        .HasColumnType("text");
-
                     b.Property<string>("CountryCode")
                         .IsRequired()
                         .HasMaxLength(2)
@@ -202,9 +202,6 @@ namespace TravelAgency.Infrastructure.Database.Migrations
 
                     b.Property<string>("CountryName")
                         .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("CountrySearch")
                         .HasColumnType("text");
 
                     b.Property<string>("IcaoCode")
@@ -232,9 +229,6 @@ namespace TravelAgency.Infrastructure.Database.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<string>("NameSearch")
-                        .HasColumnType("text");
-
                     b.Property<bool>("ScheduledService")
                         .HasColumnType("boolean");
 
@@ -242,19 +236,13 @@ namespace TravelAgency.Infrastructure.Database.Migrations
 
                     b.HasIndex("City");
 
-                    b.HasIndex("CitySearch");
-
                     b.HasIndex("CountryCode");
-
-                    b.HasIndex("CountrySearch");
 
                     b.HasIndex("IsActive");
 
                     b.HasIndex("LastSyncedAtUtc");
 
                     b.HasIndex("Name");
-
-                    b.HasIndex("NameSearch");
 
                     b.ToTable("Airports");
                 });

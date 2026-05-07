@@ -12,21 +12,36 @@ public class ProviderHealthController(IOptions<AmadeusOptions> amadeus, IOptions
 	public IActionResult Get()
 	{
 		var locationProvider = providers.Value.LocationProvider;
-		if (string.Equals(locationProvider, "Amadeus", StringComparison.OrdinalIgnoreCase)
-		    && (string.IsNullOrWhiteSpace(amadeus.Value.ClientId) ||
-		        string.IsNullOrWhiteSpace(amadeus.Value.ClientSecret)))
+		if (IsLocalLocationProvider(locationProvider))
+		{
+			locationProvider = "LocalAirportDatabase";
+		}
+		else if (string.Equals(locationProvider, "Amadeus", StringComparison.OrdinalIgnoreCase) &&
+		         !string.IsNullOrWhiteSpace(amadeus.Value.ClientId) &&
+		         !string.IsNullOrWhiteSpace(amadeus.Value.ClientSecret))
+		{
+			locationProvider = "Amadeus";
+		}
+		else
+		{
 			locationProvider = "Mock";
+		}
 
 		return Ok(new
 		{
 			flights = string.Equals(providers.Value.FlightProvider, "Amadeus", StringComparison.OrdinalIgnoreCase)
 				? "Amadeus"
 				: "Duffel",
-			locations = string.Equals(locationProvider, "Amadeus", StringComparison.OrdinalIgnoreCase)
-				? "Amadeus"
-				: "Mock",
+			locations = locationProvider,
 			hotels = "MockHotelProvider",
 			activities = "MockActivityProvider"
 		});
+	}
+
+	private static bool IsLocalLocationProvider(string provider)
+	{
+		return string.Equals(provider, "Local", StringComparison.OrdinalIgnoreCase) ||
+		       string.Equals(provider, "Database", StringComparison.OrdinalIgnoreCase) ||
+		       string.Equals(provider, "OurAirports", StringComparison.OrdinalIgnoreCase);
 	}
 }
