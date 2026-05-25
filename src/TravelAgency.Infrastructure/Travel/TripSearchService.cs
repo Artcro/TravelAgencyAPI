@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using TravelAgency.Application.DTOs.Travel;
 using TravelAgency.Application.Providers;
 using TravelAgency.Application.Travel;
+using TravelAgency.Domain.ValueObjects;
 using TravelAgency.Infrastructure.Database;
 using TravelAgency.Infrastructure.Database.Entities;
 
@@ -21,8 +22,8 @@ public sealed class TripSearchService(
 	public async Task<TripSearchResponse> SearchAsync(TripSearchRequest request, Guid? userId,
 		CancellationToken cancellationToken)
 	{
-		request.Currency = string.IsNullOrWhiteSpace(request.Currency) ? "BRL" : request.Currency;
-		request.TravelClass = string.IsNullOrWhiteSpace(request.TravelClass) ? "ECONOMY" : request.TravelClass;
+		request.Currency = Currency.Normalize(request.Currency);
+		request.TravelClass = TravelClassParser.ToWire(TravelClassParser.Parse(request.TravelClass));
 		var errors = validator.Validate(request);
 		if (errors.Count > 0) throw new ArgumentException(string.Join(" ", errors));
 

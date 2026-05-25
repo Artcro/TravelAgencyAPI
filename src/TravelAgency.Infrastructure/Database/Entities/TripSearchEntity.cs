@@ -11,7 +11,7 @@ public sealed class TripSearchEntity
 	public int Adults { get; set; }
 	public int Children { get; set; }
 	public int Infants { get; set; }
-	public string Currency { get; set; } = "BRL";
+	public string Currency { get; set; } = Domain.ValueObjects.Currency.Default;
 	public string RequestJson { get; set; } = "{}";
 	public string ResponseJson { get; set; } = "{}";
 	public DateTime CreatedAtUtc { get; set; }

@@ -3,6 +3,7 @@ using Microsoft.Extensions.Options;
 using TravelAgency.Application.DTOs.Travel;
 using TravelAgency.Application.Providers;
 using TravelAgency.Application.Travel;
+using TravelAgency.Domain.ValueObjects;
 using TravelAgency.Infrastructure.Options;
 
 namespace TravelAgency.Infrastructure.Travel;
@@ -16,8 +17,8 @@ public sealed class FrontendTravelTicketService(
 	public async Task<IReadOnlyList<FrontendTravelTicketDto>> SearchAsync(FrontendTravelTicketSearchRequest request,
 		CancellationToken cancellationToken)
 	{
-		request.Moeda = string.IsNullOrWhiteSpace(request.Moeda) ? "BRL" : request.Moeda;
-		request.Classe = string.IsNullOrWhiteSpace(request.Classe) ? "ECONOMY" : request.Classe;
+		request.Moeda = Currency.Normalize(request.Moeda);
+		request.Classe = TravelClassParser.ToWire(TravelClassParser.Parse(request.Classe));
 		request.Origem = string.IsNullOrWhiteSpace(request.Origem)
 			? defaultsOptions.Value.DefaultOrigin ?? ""
 			: request.Origem;

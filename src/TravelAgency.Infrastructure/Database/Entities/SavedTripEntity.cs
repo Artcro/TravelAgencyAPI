@@ -1,3 +1,5 @@
+using TravelAgency.Domain.Trips;
+
 namespace TravelAgency.Infrastructure.Database.Entities;
 
 public sealed class SavedTripEntity
@@ -11,7 +13,7 @@ public sealed class SavedTripEntity
 	public string? SelectedFlightProviderOfferId { get; set; }
 	public string? SelectedHotelProviderHotelId { get; set; }
 	public string SelectedActivityIdsJson { get; set; } = "[]";
-	public string Status { get; set; } = "SAVED";
+	public string Status { get; set; } = SavedTripStatus.Saved;
 	public bool IsDeleted { get; set; }
 	public DateTime CreatedAtUtc { get; set; }
 	public DateTime? UpdatedAtUtc { get; set; }

@@ -7,7 +7,7 @@ public sealed class TripSearchResponse
 	public LocationSummaryDto Destination { get; set; } = new("", "");
 	public DateOnly DepartureDate { get; set; }
 	public DateOnly? ReturnDate { get; set; }
-	public string Currency { get; set; } = "BRL";
+	public string Currency { get; set; } = Domain.ValueObjects.Currency.Default;
 	public List<FlightOptionDto> Flights { get; set; } = [];
 	public List<HotelOptionDto> Hotels { get; set; } = [];
 	public List<ActivityOptionDto> Activities { get; set; } = [];

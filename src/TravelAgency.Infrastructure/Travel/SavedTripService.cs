@@ -5,6 +5,7 @@ using Microsoft.Extensions.Options;
 using TravelAgency.Application.Config;
 using TravelAgency.Application.DTOs.Travel;
 using TravelAgency.Application.Travel;
+using TravelAgency.Domain.Trips;
 using TravelAgency.Infrastructure.Database;
 using TravelAgency.Infrastructure.Database.Entities;
 
@@ -32,7 +33,7 @@ public sealed class SavedTripService(
 		db.SavedTrips.Add(entity);
 		db.AuditLogs.Add(new AuditLogEntity
 		{
-			Id = Guid.NewGuid(), UserId = entity.UserId, Action = "trip_saved", ResourceType = "SavedTrip",
+			Id = Guid.NewGuid(), UserId = entity.UserId, Action = AuditAction.TripSaved, ResourceType = "SavedTrip",
 			ResourceId = entity.Id.ToString(), CreatedAtUtc = DateTime.UtcNow
 		});
 
@@ -72,8 +73,8 @@ public sealed class SavedTripService(
 		e.UpdatedAtUtc = DateTime.UtcNow;
 		db.AuditLogs.Add(new AuditLogEntity
 		{
-			Id = Guid.NewGuid(), UserId = e.UserId, Action = "saved_trip_deleted", ResourceType = "SavedTrip",
-			ResourceId = e.Id.ToString(), CreatedAtUtc = DateTime.UtcNow
+			Id = Guid.NewGuid(), UserId = e.UserId, Action = AuditAction.SavedTripDeleted,
+			ResourceType = "SavedTrip", ResourceId = e.Id.ToString(), CreatedAtUtc = DateTime.UtcNow
 		});
 
 		await db.SaveChangesAsync(cancellationToken);

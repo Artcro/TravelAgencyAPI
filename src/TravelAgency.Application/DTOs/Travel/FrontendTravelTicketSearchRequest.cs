@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using TravelAgency.Domain.ValueObjects;
 
 namespace TravelAgency.Application.DTOs.Travel;
 
@@ -19,9 +20,9 @@ public sealed class FrontendTravelTicketSearchRequest
 	[JsonPropertyName("bebes")]
 	public int Bebes { get; set; }
 	[JsonPropertyName("moeda")]
-	public string Moeda { get; set; } = "BRL";
+	public string Moeda { get; set; } = Currency.Default;
 	[JsonPropertyName("classe")]
-	public string Classe { get; set; } = "ECONOMY";
+	public string Classe { get; set; } = TravelClassParser.DefaultWireValue;
 	[JsonPropertyName("maxResultados")]
 	public int MaxResultados { get; set; } = 10;
 }

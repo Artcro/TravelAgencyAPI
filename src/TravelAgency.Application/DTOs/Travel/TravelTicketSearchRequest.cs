@@ -1,3 +1,5 @@
+using TravelAgency.Domain.ValueObjects;
+
 namespace TravelAgency.Application.DTOs.Travel;
 
 public sealed class TravelTicketSearchRequest
@@ -9,7 +11,7 @@ public sealed class TravelTicketSearchRequest
 	public int Adults { get; set; } = 1;
 	public int Children { get; set; }
 	public int Infants { get; set; }
-	public string Currency { get; set; } = "BRL";
-	public string TravelClass { get; set; } = "ECONOMY";
+	public string Currency { get; set; } = Domain.ValueObjects.Currency.Default;
+	public string TravelClass { get; set; } = TravelClassParser.DefaultWireValue;
 	public int MaxResults { get; set; } = 10;
 }

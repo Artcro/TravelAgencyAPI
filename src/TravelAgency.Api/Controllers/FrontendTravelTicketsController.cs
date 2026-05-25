@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using TravelAgency.Application.DTOs.Travel;
 using TravelAgency.Application.Travel;
+using TravelAgency.Domain.ValueObjects;
 
 namespace TravelAgency.Api.Controllers;
 
@@ -27,14 +28,12 @@ public sealed class FrontendTravelTicketsController(IFrontendTravelTicketService
 	{
 		request = new FrontendTravelTicketSearchRequest();
 
-		var origem = NormalizeIata(query.Origem);
-		if (origem is null) return "origem is required/invalid";
+		if (!IataCode.TryCreate(query.Origem, out var origemCode)) return "origem is required/invalid";
+		if (!IataCode.TryCreate(query.Destino, out var destinoCode)) return "destino is required/invalid";
 
-		var destino = NormalizeIata(query.Destino);
-		if (destino is null) return "destino is required/invalid";
-
-		if (string.Equals(origem, destino, StringComparison.OrdinalIgnoreCase))
-			return "origem and destino must differ";
+		var origem = origemCode.Value;
+		var destino = destinoCode.Value;
+		if (origemCode == destinoCode) return "origem and destino must differ";
 
 		var departureValue = string.IsNullOrWhiteSpace(query.DataPartida) ? query.DataIda : query.DataPartida;
 		if (!TryParseDate(departureValue, out var dataPartida)) return "dataPartida is required/invalid";
@@ -73,8 +72,8 @@ public sealed class FrontendTravelTicketsController(IFrontendTravelTicketService
 			Adultos = adultos,
 			Criancas = criancas,
 			Bebes = 0,
-			Moeda = "BRL",
-			Classe = query.Classe ?? "ECONOMY",
+			Moeda = Currency.Default,
+			Classe = query.Classe ?? TravelClassParser.DefaultWireValue,
 			MaxResultados = maxResultados
 		};
 
@@ -87,12 +86,6 @@ public sealed class FrontendTravelTicketsController(IFrontendTravelTicketService
 	{
 		var response = await frontendTravelTicketService.SearchAsync(request, cancellationToken);
 		return Ok(response);
-	}
-
-	private static string? NormalizeIata(string? value)
-	{
-		var normalized = value?.Trim().ToUpperInvariant();
-		return normalized is { Length: 3 } && normalized.All(char.IsLetter) ? normalized : null;
 	}
 
 	private static bool TryParseDate(string? value, out DateOnly date)

@@ -1,3 +1,5 @@
+using TravelAgency.Domain.ValueObjects;
+
 namespace TravelAgency.Application.DTOs.Travel;
 
 public sealed class FlightOptionDto
@@ -6,7 +8,7 @@ public sealed class FlightOptionDto
 	public string ProviderOfferId { get; set; } = "";
 	public string AirlineCode { get; set; } = "";
 	public string? AirlineName { get; set; }
-	public MoneyDto TotalPrice { get; set; } = new(0, "BRL");
+	public MoneyDto TotalPrice { get; set; } = new(0, Currency.Default);
 	public string Duration { get; set; } = "";
 	public int Stops { get; set; }
 	public List<TripSegmentDto> OutboundSegments { get; set; } = [];
