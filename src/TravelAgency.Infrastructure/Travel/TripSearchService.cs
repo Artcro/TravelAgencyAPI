@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using TravelAgency.Application.Common;
 using TravelAgency.Application.DTOs.Travel;
 using TravelAgency.Application.Providers;
 using TravelAgency.Application.Travel;
@@ -19,12 +20,12 @@ public sealed class TripSearchService(
 	TravelDbContext db,
 	ILogger<TripSearchService> logger) : ITripSearchService
 {
-	public async Task<TripSearchResponse> SearchAsync(TripSearchRequest request, Guid? userId,
+	public async Task<Result<TripSearchResponse>> SearchAsync(TripSearchRequest request, Guid? userId,
 		CancellationToken cancellationToken)
 	{
 		var normalized = Normalize(request);
 		var errors = validator.Validate(normalized);
-		if (errors.Count > 0) throw new ArgumentException(string.Join(" ", errors));
+		if (errors.Count > 0) return Result<TripSearchResponse>.Invalid(errors);
 
 		var warnings = new List<string>();
 		IReadOnlyList<FlightOptionDto> flights;
@@ -52,7 +53,7 @@ public sealed class TripSearchService(
 		response.SearchId = Guid.NewGuid();
 
 		await RecordSearchAsync(normalized, response, userId, warnings, cancellationToken);
-		return response;
+		return Result<TripSearchResponse>.Ok(response);
 	}
 
 	public async Task<TripSearchResponse?> GetSearchByIdAsync(Guid searchId, Guid? userId,

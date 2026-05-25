@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using TravelAgency.Application.Common;
 using TravelAgency.Application.DTOs.Travel;
 using TravelAgency.Application.Providers;
 using TravelAgency.Application.Travel;
@@ -14,8 +15,8 @@ public sealed class FrontendTravelTicketService(
 	IOptions<TravelSearchDefaultsOptions> defaultsOptions,
 	ILogger<FrontendTravelTicketService> logger) : IFrontendTravelTicketService
 {
-	public async Task<IReadOnlyList<FrontendTravelTicketDto>> SearchAsync(FrontendTravelTicketSearchRequest request,
-		CancellationToken cancellationToken)
+	public async Task<Result<IReadOnlyList<FrontendTravelTicketDto>>> SearchAsync(
+		FrontendTravelTicketSearchRequest request, CancellationToken cancellationToken)
 	{
 		request.Moeda = Currency.Normalize(request.Moeda);
 		request.Classe = TravelClassParser.ToWire(TravelClassParser.Parse(request.Classe));
@@ -38,7 +39,7 @@ public sealed class FrontendTravelTicketService(
 		};
 
 		var errors = validator.Validate(baseRequest);
-		if (errors.Count > 0) throw new ArgumentException(string.Join(" ", errors));
+		if (errors.Count > 0) return Result<IReadOnlyList<FrontendTravelTicketDto>>.Invalid(errors);
 
 		var tripRequest = new TripSearchRequest
 		{
@@ -103,6 +104,6 @@ public sealed class FrontendTravelTicketService(
 			});
 		}
 
-		return response;
+		return Result<IReadOnlyList<FrontendTravelTicketDto>>.Ok(response);
 	}
 }

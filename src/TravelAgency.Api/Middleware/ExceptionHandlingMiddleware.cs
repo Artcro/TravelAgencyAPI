@@ -10,19 +10,10 @@ public sealed class ExceptionHandlingMiddleware(RequestDelegate next, ILogger<Ex
 		{
 			await next(context);
 		}
-		catch (ArgumentException ex)
-		{
-			context.Response.StatusCode = StatusCodes.Status400BadRequest;
-			await context.Response.WriteAsJsonAsync(new ProblemDetails
-			{
-				Status = 400,
-				Title = "Invalid request",
-				Detail = ex.Message,
-				Instance = context.Request.Path
-			});
-		}
 		catch (InvalidOperationException ex)
 		{
+			// Legitimate provider/IO failures bubble up here; controllers should
+			// validate first so generic ArgumentException reaches the 500 arm.
 			logger.LogWarning(ex, "Operation failed");
 			context.Response.StatusCode = StatusCodes.Status502BadGateway;
 			await context.Response.WriteAsJsonAsync(new ProblemDetails

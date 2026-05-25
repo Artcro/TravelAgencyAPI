@@ -1,3 +1,4 @@
+using TravelAgency.Application.Common;
 using TravelAgency.Application.DTOs.Travel;
 using TravelAgency.Application.Travel;
 
@@ -22,9 +23,14 @@ public class TripCriteriaValidatorTests
 		};
 	}
 
-	private static IReadOnlyList<string> Run(TripSearchRequest r)
+	private static IReadOnlyList<ValidationError> Run(TripSearchRequest r)
 	{
 		return new TripSearchRequestValidator().Validate(r);
+	}
+
+	private static bool HasField(IReadOnlyList<ValidationError> errors, string field)
+	{
+		return errors.Any(e => e.Field == field);
 	}
 
 	[Fact]
@@ -38,7 +44,7 @@ public class TripCriteriaValidatorTests
 	{
 		var r = Valid();
 		r.Origin = "";
-		Assert.Contains("Origin is required.", Run(r));
+		Assert.True(HasField(Run(r), "origin"));
 	}
 
 	[Fact]
@@ -46,7 +52,7 @@ public class TripCriteriaValidatorTests
 	{
 		var r = Valid();
 		r.Destination = "";
-		Assert.Contains("Destination is required.", Run(r));
+		Assert.True(HasField(Run(r), "destination"));
 	}
 
 	[Fact]
@@ -55,7 +61,7 @@ public class TripCriteriaValidatorTests
 		var r = Valid();
 		r.Origin = "GRU";
 		r.Destination = "GRU";
-		Assert.Contains("Origin cannot equal destination.", Run(r));
+		Assert.Contains(Run(r), e => e.Message == "Origin cannot equal destination.");
 	}
 
 	[Fact]
@@ -63,7 +69,7 @@ public class TripCriteriaValidatorTests
 	{
 		var r = Valid();
 		r.DepartureDate = Today.AddDays(-1);
-		Assert.Contains("DepartureDate cannot be in the past.", Run(r));
+		Assert.True(HasField(Run(r), "departureDate"));
 	}
 
 	[Fact]
@@ -71,7 +77,7 @@ public class TripCriteriaValidatorTests
 	{
 		var r = Valid();
 		r.ReturnDate = r.DepartureDate.AddDays(-1);
-		Assert.Contains("ReturnDate must be on or after DepartureDate.", Run(r));
+		Assert.True(HasField(Run(r), "returnDate"));
 	}
 
 	[Fact]
@@ -87,7 +93,7 @@ public class TripCriteriaValidatorTests
 	{
 		var r = Valid();
 		r.Adults = 0;
-		Assert.Contains(Run(r), e => e.StartsWith("Adults"));
+		Assert.True(HasField(Run(r), "adults"));
 	}
 
 	[Fact]
@@ -95,7 +101,7 @@ public class TripCriteriaValidatorTests
 	{
 		var r = Valid();
 		r.Adults = 10;
-		Assert.Contains(Run(r), e => e.StartsWith("Adults"));
+		Assert.True(HasField(Run(r), "adults"));
 	}
 
 	[Fact]
@@ -103,7 +109,7 @@ public class TripCriteriaValidatorTests
 	{
 		var r = Valid();
 		r.Children = -1;
-		Assert.Contains(Run(r), e => e.StartsWith("Children"));
+		Assert.True(HasField(Run(r), "children"));
 	}
 
 	[Fact]
@@ -111,7 +117,7 @@ public class TripCriteriaValidatorTests
 	{
 		var r = Valid();
 		r.Children = 10;
-		Assert.Contains(Run(r), e => e.StartsWith("Children"));
+		Assert.True(HasField(Run(r), "children"));
 	}
 
 	[Fact]
@@ -119,7 +125,7 @@ public class TripCriteriaValidatorTests
 	{
 		var r = Valid();
 		r.Infants = -1;
-		Assert.Contains("Infants must be >= 0.", Run(r));
+		Assert.True(HasField(Run(r), "infants"));
 	}
 
 	[Fact]
@@ -127,7 +133,7 @@ public class TripCriteriaValidatorTests
 	{
 		var r = Valid();
 		r.MaxFlightResults = 0;
-		Assert.Contains(Run(r), e => e.StartsWith("MaxResults"));
+		Assert.True(HasField(Run(r), "maxResults"));
 	}
 
 	[Fact]
@@ -135,7 +141,7 @@ public class TripCriteriaValidatorTests
 	{
 		var r = Valid();
 		r.MaxFlightResults = 51;
-		Assert.Contains(Run(r), e => e.StartsWith("MaxResults"));
+		Assert.True(HasField(Run(r), "maxResults"));
 	}
 
 	[Fact]
@@ -148,9 +154,9 @@ public class TripCriteriaValidatorTests
 		};
 
 		var errors = new TravelTicketSearchRequestValidator().Validate(ticket);
-		Assert.Contains("Origin cannot equal destination.", errors);
-		Assert.Contains(errors, e => e.StartsWith("Adults"));
-		Assert.Contains(errors, e => e.StartsWith("Children"));
-		Assert.Contains(errors, e => e.StartsWith("MaxResults"));
+		Assert.Contains(errors, e => e.Message == "Origin cannot equal destination.");
+		Assert.True(HasField(errors, "adults"));
+		Assert.True(HasField(errors, "children"));
+		Assert.True(HasField(errors, "maxResults"));
 	}
 }

@@ -1,12 +1,13 @@
+using TravelAgency.Application.Common;
 using TravelAgency.Application.DTOs.Travel;
 
 namespace TravelAgency.Application.Travel;
 
 public sealed class TripSearchRequestValidator
 {
-	public IReadOnlyList<string> Validate(TripSearchRequest request)
+	public IReadOnlyList<ValidationError> Validate(TripSearchRequest request)
 	{
-		var errors = new List<string>();
+		var errors = new List<ValidationError>();
 		TripCriteriaValidator.ValidateCommonCriteria(request.Origin, request.Destination, request.DepartureDate,
 			request.ReturnDate, request.Adults, request.Children, request.Infants, request.MaxFlightResults, errors);
 

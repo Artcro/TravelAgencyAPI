@@ -14,6 +14,7 @@ using TravelAgency.Infrastructure.Options;
 using TravelAgency.Infrastructure.Providers.Duffel;
 using TravelAgency.Infrastructure.Providers.Local;
 using TravelAgency.Infrastructure.Providers.Mock;
+using TravelAgency.Infrastructure.Services;
 using TravelAgency.Infrastructure.Services.Airports;
 using TravelAgency.Infrastructure.Travel;
 
@@ -58,6 +59,7 @@ public static class DependencyInjection
 		services.AddScoped<DuffelFlightProvider>();
 		services.AddScoped<LocalAirportLocationProvider>();
 		services.AddScoped<MockLocationProvider>();
+		services.AddScoped<ProviderRequestLogger>();
 		services.AddScoped<IAirportDataSyncService, OurAirportsDataSyncService>();
 		services.AddHostedService<OurAirportsSyncHostedService>();
 		services.AddHttpClient("duffel", (sp, c) =>
