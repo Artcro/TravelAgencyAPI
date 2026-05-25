@@ -60,7 +60,7 @@ public class Phase3ServiceTests
 	{
 		var db = CreateDb();
 		var saved = new SavedTripService(db, Options.Create(new SecurityOptions { RequireAuthentication = false }),
-			new FakeCurrentUser(null, false), NullLogger<SavedTripService>.Instance);
+			new FakeCurrentUser(null, false));
 
 		var searchId = await SeedSearch(db);
 		await saved.SaveAsync(new SaveTripRequest { SearchId = searchId, Name = "demo" }, null, default);
@@ -73,7 +73,7 @@ public class Phase3ServiceTests
 		var db = CreateDb();
 		var uid = Guid.NewGuid();
 		var saved = new SavedTripService(db, Options.Create(new SecurityOptions { RequireAuthentication = true }),
-			new FakeCurrentUser(uid, true), NullLogger<SavedTripService>.Instance);
+			new FakeCurrentUser(uid, true));
 
 		var searchId = await SeedSearch(db);
 		await saved.SaveAsync(new SaveTripRequest { SearchId = searchId, Name = "mine" }, null, default);
@@ -87,12 +87,12 @@ public class Phase3ServiceTests
 		var owner = Guid.NewGuid();
 		var trip = await SeedSavedTrip(db, owner);
 		var saved = new SavedTripService(db, Options.Create(new SecurityOptions { RequireAuthentication = true }),
-			new FakeCurrentUser(Guid.NewGuid(), true), NullLogger<SavedTripService>.Instance);
+			new FakeCurrentUser(Guid.NewGuid(), true));
 
 		Assert.Null(await saved.GetByIdAsync(trip, null, default));
 
 		var ownerSvc = new SavedTripService(db, Options.Create(new SecurityOptions { RequireAuthentication = true }),
-			new FakeCurrentUser(owner, true), NullLogger<SavedTripService>.Instance);
+			new FakeCurrentUser(owner, true));
 
 		Assert.True(await ownerSvc.DeleteAsync(trip, null, default));
 		Assert.True(db.SavedTrips.Single().IsDeleted);

@@ -4,6 +4,12 @@ using TravelAgency.Application.Providers;
 
 namespace TravelAgency.Api.Controllers;
 
+/// <summary>
+/// Legacy location-search endpoint, duplicated by
+/// <see cref="AirportsController"/>. Scheduled for removal once the frontend
+/// confirms no callers remain on <c>/api/v1/locations</c>.
+/// </summary>
+[Obsolete("Use /api/v1/airports/search instead. Slated for removal after 2026-08-01.")]
 [ApiController, Route("api/v1/locations")]
 public class LocationsController(ILocationProvider provider) : ControllerBase
 {

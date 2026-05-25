@@ -44,10 +44,11 @@ public static class DependencyInjection
 		services.AddScoped<ITripSearchService, TripSearchService>();
 		services.AddScoped<ISavedTripService, SavedTripService>();
 		services.AddScoped<IFrontendTravelTicketService, FrontendTravelTicketService>();
+		services.AddScoped<IProviderHealthService, ProviderHealthService>();
 		services.AddScoped<ILocationProvider>(sp =>
 		{
 			var providers = sp.GetRequiredService<IOptions<TravelProvidersOptions>>().Value;
-			return IsLocalLocationProvider(providers.LocationProvider)
+			return providers.IsLocalLocationProvider()
 				? sp.GetRequiredService<LocalAirportLocationProvider>()
 				: sp.GetRequiredService<MockLocationProvider>();
 		});
@@ -77,12 +78,5 @@ public static class DependencyInjection
 
 		services.AddHttpClient();
 		return services;
-	}
-
-	private static bool IsLocalLocationProvider(string provider)
-	{
-		return string.Equals(provider, "Local", StringComparison.OrdinalIgnoreCase) ||
-		       string.Equals(provider, "Database", StringComparison.OrdinalIgnoreCase) ||
-		       string.Equals(provider, "OurAirports", StringComparison.OrdinalIgnoreCase);
 	}
 }

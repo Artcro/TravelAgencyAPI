@@ -1,6 +1,5 @@
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using TravelAgency.Application.Config;
 using TravelAgency.Application.DTOs.Travel;
@@ -14,8 +13,7 @@ namespace TravelAgency.Infrastructure.Travel;
 public sealed class SavedTripService(
 	TravelDbContext db,
 	IOptions<SecurityOptions> security,
-	ICurrentUserService currentUserService,
-	ILogger<SavedTripService> logger) : ISavedTripService
+	ICurrentUserService currentUserService) : ISavedTripService
 {
 	public async Task<SavedTripResponse> SaveAsync(SaveTripRequest request, Guid? userId,
 		CancellationToken cancellationToken)
