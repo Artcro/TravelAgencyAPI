@@ -74,9 +74,16 @@ public sealed class AuthService(
 		await dbContext.SaveChangesAsync(cancellationToken);
 	}
 
-	public Task<ClaimsPrincipal?> GetMeAsync(ClaimsPrincipal principal, CancellationToken cancellationToken)
+	public Task<MeResponse?> GetMeAsync(ClaimsPrincipal principal, CancellationToken cancellationToken)
 	{
-		return Task.FromResult<ClaimsPrincipal?>(principal?.Identity?.IsAuthenticated == true ? principal : null);
+		if (principal?.Identity?.IsAuthenticated != true) return Task.FromResult<MeResponse?>(null);
+
+		var userIdClaim = principal.FindFirst(ClaimTypes.NameIdentifier)?.Value ??
+		                  principal.FindFirst("sub")?.Value;
+		var userId = Guid.TryParse(userIdClaim, out var parsed) ? parsed : (Guid?)null;
+		var email = principal.FindFirst(ClaimTypes.Email)?.Value ?? principal.FindFirst("email")?.Value;
+		var displayName = principal.Identity?.Name ?? principal.FindFirst("name")?.Value;
+		return Task.FromResult<MeResponse?>(new MeResponse(userId, email, displayName));
 	}
 
 	private async Task<AuthResponse> BuildAuthResponseAsync(ApplicationUser user, string? ipAddress,

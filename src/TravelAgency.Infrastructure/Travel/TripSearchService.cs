@@ -22,16 +22,15 @@ public sealed class TripSearchService(
 	public async Task<TripSearchResponse> SearchAsync(TripSearchRequest request, Guid? userId,
 		CancellationToken cancellationToken)
 	{
-		request.Currency = Currency.Normalize(request.Currency);
-		request.TravelClass = TravelClassParser.ToWire(TravelClassParser.Parse(request.TravelClass));
-		var errors = validator.Validate(request);
+		var normalized = Normalize(request);
+		var errors = validator.Validate(normalized);
 		if (errors.Count > 0) throw new ArgumentException(string.Join(" ", errors));
 
 		var warnings = new List<string>();
 		IReadOnlyList<FlightOptionDto> flights;
 		try
 		{
-			flights = await flightProvider.SearchFlightsAsync(request, cancellationToken);
+			flights = await flightProvider.SearchFlightsAsync(normalized, cancellationToken);
 		}
 		catch (Exception ex)
 		{
@@ -39,34 +38,68 @@ public sealed class TripSearchService(
 			throw new InvalidOperationException("Flight provider failed.", ex);
 		}
 
-		var hotels = new List<HotelOptionDto>();
-		var acts = new List<ActivityOptionDto>();
+		var hotels = normalized.IncludeHotels
+			? await TryProviderAsync("Hotel", warnings,
+				() => hotelProvider.SearchHotelsAsync(normalized, cancellationToken))
+			: [];
 
-		if (request.IncludeHotels)
-			try
-			{
-				hotels = (await hotelProvider.SearchHotelsAsync(request, cancellationToken)).ToList();
-				warnings.Add("Hotel results are mocked.");
-			}
-			catch
-			{
-				warnings.Add("Hotel provider unavailable.");
-			}
+		var activities = normalized.IncludeActivities
+			? await TryProviderAsync("Activity", warnings,
+				() => activityProvider.SearchActivitiesAsync(normalized, cancellationToken))
+			: [];
 
-		if (request.IncludeActivities)
-			try
-			{
-				acts = (await activityProvider.SearchActivitiesAsync(request, cancellationToken)).ToList();
-				warnings.Add("Activity results are mocked.");
-			}
-			catch
-			{
-				warnings.Add("Activity provider unavailable.");
-			}
-
-		var response = normalizer.Normalize(request, flights, hotels, acts, warnings);
+		var response = normalizer.Normalize(normalized, flights, hotels, activities, warnings);
 		response.SearchId = Guid.NewGuid();
 
+		await RecordSearchAsync(normalized, response, userId, warnings, cancellationToken);
+		return response;
+	}
+
+	public async Task<TripSearchResponse?> GetSearchByIdAsync(Guid searchId, Guid? userId,
+		CancellationToken cancellationToken)
+	{
+		var e = await db.TripSearches.FirstOrDefaultAsync(x => x.Id == searchId, cancellationToken);
+		return e is null ? null : JsonSerializer.Deserialize<TripSearchResponse>(e.ResponseJson);
+	}
+
+	private static TripSearchRequest Normalize(TripSearchRequest request)
+	{
+		return new TripSearchRequest
+		{
+			Origin = request.Origin,
+			Destination = request.Destination,
+			DepartureDate = request.DepartureDate,
+			ReturnDate = request.ReturnDate,
+			Adults = request.Adults,
+			Children = request.Children,
+			Infants = request.Infants,
+			Currency = Currency.Normalize(request.Currency),
+			TravelClass = TravelClassParser.ToWire(TravelClassParser.Parse(request.TravelClass)),
+			MaxFlightResults = request.MaxFlightResults,
+			IncludeHotels = request.IncludeHotels,
+			IncludeActivities = request.IncludeActivities
+		};
+	}
+
+	private static async Task<List<T>> TryProviderAsync<T>(string label, List<string> warnings,
+		Func<Task<IReadOnlyList<T>>> call)
+	{
+		try
+		{
+			var items = (await call()).ToList();
+			warnings.Add($"{label} results are mocked.");
+			return items;
+		}
+		catch
+		{
+			warnings.Add($"{label} provider unavailable.");
+			return [];
+		}
+	}
+
+	private async Task RecordSearchAsync(TripSearchRequest request, TripSearchResponse response, Guid? userId,
+		IReadOnlyCollection<string> warnings, CancellationToken cancellationToken)
+	{
 		db.TripSearches.Add(new TripSearchEntity
 		{
 			Id = response.SearchId,
@@ -86,13 +119,5 @@ public sealed class TripSearchService(
 		});
 
 		await db.SaveChangesAsync(cancellationToken);
-		return response;
-	}
-
-	public async Task<TripSearchResponse?> GetSearchByIdAsync(Guid searchId, Guid? userId,
-		CancellationToken cancellationToken)
-	{
-		var e = await db.TripSearches.FirstOrDefaultAsync(x => x.Id == searchId, cancellationToken);
-		return e is null ? null : JsonSerializer.Deserialize<TripSearchResponse>(e.ResponseJson);
 	}
 }

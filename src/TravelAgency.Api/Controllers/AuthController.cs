@@ -40,6 +40,6 @@ public sealed class AuthController(IAuthService authService) : ControllerBase
 	public async Task<IActionResult> Me(CancellationToken ct)
 	{
 		var me = await authService.GetMeAsync(User, ct);
-		return me is null ? Unauthorized() : Ok(new { user = new { name = me.Identity?.Name } });
+		return me is null ? Unauthorized() : Ok(me);
 	}
 }

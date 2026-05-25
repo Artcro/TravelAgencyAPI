@@ -12,5 +12,5 @@ public interface IAuthService
 		CancellationToken cancellationToken);
 
 	Task LogoutAsync(string refreshToken, string? ipAddress, CancellationToken cancellationToken);
-	Task<ClaimsPrincipal?> GetMeAsync(ClaimsPrincipal principal, CancellationToken cancellationToken);
+	Task<MeResponse?> GetMeAsync(ClaimsPrincipal principal, CancellationToken cancellationToken);
 }

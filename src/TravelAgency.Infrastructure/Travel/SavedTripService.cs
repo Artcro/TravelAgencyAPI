@@ -41,23 +41,27 @@ public sealed class SavedTripService(
 		return new SavedTripResponse(entity.Id, entity.Status);
 	}
 
-	public async Task<IReadOnlyList<object>> ListAsync(Guid? userId, CancellationToken cancellationToken)
+	public async Task<IReadOnlyList<SavedTripSummaryDto>> ListAsync(Guid? userId, CancellationToken cancellationToken)
 	{
 		var effectiveUserId = ResolveUserId(userId);
 		var query = db.SavedTrips.Where(x => !x.IsDeleted);
 		if (security.Value.RequireAuthentication) query = query.Where(x => x.UserId == effectiveUserId);
 
-		return await query.Select(x => (object)new { x.Id, x.Name, x.Status, x.CreatedAtUtc })
+		return await query.OrderByDescending(x => x.CreatedAtUtc)
+			.Select(x => new SavedTripSummaryDto(x.Id, x.Name, x.Status, x.CreatedAtUtc))
 			.ToListAsync(cancellationToken);
 	}
 
-	public async Task<object?> GetByIdAsync(Guid tripId, Guid? userId, CancellationToken cancellationToken)
+	public async Task<SavedTripDetailDto?> GetByIdAsync(Guid tripId, Guid? userId,
+		CancellationToken cancellationToken)
 	{
 		var effectiveUserId = ResolveUserId(userId);
 		var query = db.SavedTrips.Where(x => x.Id == tripId && !x.IsDeleted);
 		if (security.Value.RequireAuthentication) query = query.Where(x => x.UserId == effectiveUserId);
 
-		return await query.Select(x => (object)new { x.Id, x.Name, x.Status }).FirstOrDefaultAsync(cancellationToken);
+		return await query.Select(x => new SavedTripDetailDto(x.Id, x.Name, x.Status, x.CreatedAtUtc, x.SearchId,
+				x.UserId, x.SelectedFlightProviderOfferId, x.SelectedHotelProviderHotelId))
+			.FirstOrDefaultAsync(cancellationToken);
 	}
 
 	public async Task<bool> DeleteAsync(Guid tripId, Guid? userId, CancellationToken cancellationToken)
