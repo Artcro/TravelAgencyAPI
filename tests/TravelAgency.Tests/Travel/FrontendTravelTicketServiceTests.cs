@@ -4,8 +4,8 @@ using Microsoft.Extensions.Options;
 using TravelAgency.Application.DTOs.Travel;
 using TravelAgency.Application.Providers;
 using TravelAgency.Application.Travel;
-using TravelAgency.Infrastructure;
 using TravelAgency.Infrastructure.Options;
+using TravelAgency.Infrastructure.Travel;
 
 namespace TravelAgency.Tests.Travel;
 

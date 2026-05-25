@@ -5,7 +5,7 @@ using TravelAgency.Application.Providers;
 using TravelAgency.Application.Travel;
 using TravelAgency.Infrastructure.Options;
 
-namespace TravelAgency.Infrastructure;
+namespace TravelAgency.Infrastructure.Travel;
 
 public sealed class FrontendTravelTicketService(
 	IFlightProvider flightProvider,

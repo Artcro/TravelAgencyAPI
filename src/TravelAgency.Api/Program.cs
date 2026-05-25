@@ -11,7 +11,6 @@ using TravelAgency.Application.Config;
 using TravelAgency.Application.Travel;
 using TravelAgency.Infrastructure.Config;
 using TravelAgency.Infrastructure.Database;
-using SecurityOptions = TravelAgency.Infrastructure.SecurityOptions;
 
 
 var builder = WebApplication.CreateBuilder(args);

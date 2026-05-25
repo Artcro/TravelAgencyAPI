@@ -1,12 +1,13 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+using TravelAgency.Application.Config;
 using TravelAgency.Application.DTOs.Travel;
 using TravelAgency.Application.Providers;
 using TravelAgency.Application.Travel;
-using TravelAgency.Infrastructure;
 using TravelAgency.Infrastructure.Database;
 using TravelAgency.Infrastructure.Database.Entities;
+using TravelAgency.Infrastructure.Travel;
 
 namespace TravelAgency.Tests.Travel;
 

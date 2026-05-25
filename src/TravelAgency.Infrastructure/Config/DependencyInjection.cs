@@ -4,8 +4,10 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using TravelAgency.Application.Auth;
+using TravelAgency.Application.Config;
 using TravelAgency.Application.Providers;
 using TravelAgency.Application.Travel;
+using TravelAgency.Infrastructure.Auth;
 using TravelAgency.Infrastructure.Database;
 using TravelAgency.Infrastructure.Database.Entities;
 using TravelAgency.Infrastructure.Options;
@@ -13,6 +15,7 @@ using TravelAgency.Infrastructure.Providers.Duffel;
 using TravelAgency.Infrastructure.Providers.Local;
 using TravelAgency.Infrastructure.Providers.Mock;
 using TravelAgency.Infrastructure.Services.Airports;
+using TravelAgency.Infrastructure.Travel;
 
 namespace TravelAgency.Infrastructure.Config;
 

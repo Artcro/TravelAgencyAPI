@@ -8,7 +8,7 @@ using TravelAgency.Application.DTOs.Auth;
 using TravelAgency.Infrastructure.Database;
 using TravelAgency.Infrastructure.Database.Entities;
 
-namespace TravelAgency.Infrastructure;
+namespace TravelAgency.Infrastructure.Auth;
 
 public sealed class AuthService(
 	UserManager<ApplicationUser> userManager,
