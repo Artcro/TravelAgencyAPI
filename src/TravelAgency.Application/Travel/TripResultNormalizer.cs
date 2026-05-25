@@ -1,4 +1,5 @@
 using TravelAgency.Application.DTOs.Travel;
+using TravelAgency.Domain.ValueObjects;
 
 namespace TravelAgency.Application.Travel;
 
@@ -13,7 +14,7 @@ public sealed class TripResultNormalizer
 			Destination = new LocationSummaryDto(request.Destination, request.Destination),
 			DepartureDate = request.DepartureDate,
 			ReturnDate = request.ReturnDate,
-			Currency = string.IsNullOrWhiteSpace(request.Currency) ? "BRL" : request.Currency,
+			Currency = Currency.Normalize(request.Currency),
 			Flights = flights.ToList(), Hotels = hotels.ToList(), Activities = activities.ToList(), Warnings = warnings
 		};
 	}

@@ -6,18 +6,19 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using TravelAgency.Application.DTOs.Travel;
 using TravelAgency.Application.Providers;
-using TravelAgency.Infrastructure.Database;
-using TravelAgency.Infrastructure.Database.Entities;
+using TravelAgency.Infrastructure.Services;
 
 namespace TravelAgency.Infrastructure.Providers.Duffel;
 
 public sealed class DuffelFlightProvider(
 	IHttpClientFactory factory,
 	IOptions<DuffelOptions> options,
-	TravelDbContext db,
+	ProviderRequestLogger requestLogger,
 	ILogger<DuffelFlightProvider> logger) : IFlightProvider
 {
 	private const int MaxErrorBodyChars = 4096;
+	private const string ProviderName = "Duffel";
+	private const string OfferRequestsEndpoint = "/air/offer_requests";
 
 	public async Task<IReadOnlyList<FlightOptionDto>> SearchFlightsAsync(TripSearchRequest request,
 		CancellationToken cancellationToken)
@@ -63,9 +64,10 @@ public sealed class DuffelFlightProvider(
 
 			if (res.Content.Headers.ContentLength is long contentLength && contentLength > settings.MaxResponseBytes)
 			{
-				await TrySaveProviderRequestLogAsync((int)res.StatusCode, false,
+				await requestLogger.RecordAsync(ProviderName, OfferRequestsEndpoint, (int)res.StatusCode, false,
+					sw.ElapsedMilliseconds,
 					$"Duffel response exceeded configured max response bytes ({contentLength} > {settings.MaxResponseBytes}).",
-					sw.ElapsedMilliseconds, cancellationToken);
+					cancellationToken);
 
 				throw new InvalidOperationException(
 					$"Duffel flights failed ({(int)res.StatusCode}): response too large ({contentLength} bytes).");
@@ -74,8 +76,8 @@ public sealed class DuffelFlightProvider(
 			if (!res.IsSuccessStatusCode)
 			{
 				var errorBody = await ReadAndTruncateErrorBodyAsync(res, cancellationToken);
-				await TrySaveProviderRequestLogAsync((int)res.StatusCode, false, errorBody, sw.ElapsedMilliseconds,
-					cancellationToken);
+				await requestLogger.RecordAsync(ProviderName, OfferRequestsEndpoint, (int)res.StatusCode, false,
+					sw.ElapsedMilliseconds, errorBody, cancellationToken);
 
 				throw new InvalidOperationException($"Duffel flights failed ({(int)res.StatusCode}): {errorBody}");
 			}
@@ -102,8 +104,9 @@ public sealed class DuffelFlightProvider(
 				if (!offersResponse.IsSuccessStatusCode)
 				{
 					var offersErrorBody = await ReadAndTruncateErrorBodyAsync(offersResponse, cancellationToken);
-					await TrySaveProviderRequestLogAsync((int)offersResponse.StatusCode, false, offersErrorBody,
-						sw.ElapsedMilliseconds, cancellationToken);
+					await requestLogger.RecordAsync(ProviderName, OfferRequestsEndpoint,
+						(int)offersResponse.StatusCode, false, sw.ElapsedMilliseconds, offersErrorBody,
+						cancellationToken);
 
 					throw new InvalidOperationException(
 						$"Duffel flights failed ({(int)offersResponse.StatusCode}): {offersErrorBody}");
@@ -117,8 +120,8 @@ public sealed class DuffelFlightProvider(
 				offers = offersEnvelope?.Data;
 			}
 
-			await TrySaveProviderRequestLogAsync((int)res.StatusCode, true, null, sw.ElapsedMilliseconds,
-				cancellationToken);
+			await requestLogger.RecordAsync(ProviderName, OfferRequestsEndpoint, (int)res.StatusCode, true,
+				sw.ElapsedMilliseconds, cancellationToken: cancellationToken);
 
 			if (offers is null || offers.Count == 0) return [];
 
@@ -157,30 +160,11 @@ public sealed class DuffelFlightProvider(
 			var message = $"Duffel flight search timed out after {timeoutSeconds} seconds.";
 			logger.LogWarning(ex, "{Message}", message);
 
-			await TrySaveProviderRequestLogAsync(408, false, message, sw.ElapsedMilliseconds, CancellationToken.None);
+			await requestLogger.RecordAsync(ProviderName, OfferRequestsEndpoint, 408, false, sw.ElapsedMilliseconds,
+				message, CancellationToken.None);
 			if (settings.ReturnEmptyOnTimeout) return [];
 
 			throw new InvalidOperationException(message);
-		}
-	}
-
-	private async Task TrySaveProviderRequestLogAsync(int statusCode, bool success, string? errorMessage,
-		long durationMs, CancellationToken cancellationToken)
-	{
-		try
-		{
-			db.ProviderRequestLogs.Add(new ProviderRequestLogEntity
-			{
-				Id = Guid.NewGuid(), Provider = "Duffel", Endpoint = "/air/offer_requests", StatusCode = statusCode,
-				Success = success, ErrorMessage = errorMessage, DurationMs = durationMs, CreatedAtUtc = DateTime.UtcNow
-			});
-
-			await db.SaveChangesAsync(cancellationToken);
-		}
-		catch (Exception ex)
-		{
-			logger.LogWarning(ex,
-				"Best-effort provider request logging failed for Duffel. Continuing request processing.");
 		}
 	}
 

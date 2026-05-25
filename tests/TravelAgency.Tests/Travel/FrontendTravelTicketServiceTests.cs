@@ -4,8 +4,8 @@ using Microsoft.Extensions.Options;
 using TravelAgency.Application.DTOs.Travel;
 using TravelAgency.Application.Providers;
 using TravelAgency.Application.Travel;
-using TravelAgency.Infrastructure;
 using TravelAgency.Infrastructure.Options;
+using TravelAgency.Infrastructure.Travel;
 
 namespace TravelAgency.Tests.Travel;
 
@@ -29,7 +29,9 @@ public class FrontendTravelTicketServiceTests
 			}
 		]));
 
-		var item = Assert.Single(await service.SearchAsync(ValidRequest(), default));
+		var result = await service.SearchAsync(ValidRequest(), default);
+		Assert.True(result.IsValid);
+		var item = Assert.Single(result.Value!);
 		Assert.Equal("LATAM", item.CiaAerea);
 		Assert.Equal("08:30", item.HoraPartidaIda);
 		Assert.Equal("", item.HoraPartidaVolta);
@@ -62,7 +64,9 @@ public class FrontendTravelTicketServiceTests
 			}
 		]));
 
-		var item = Assert.Single(await service.SearchAsync(ValidRequest(), default));
+		var result = await service.SearchAsync(ValidRequest(), default);
+		Assert.True(result.IsValid);
+		var item = Assert.Single(result.Value!);
 		Assert.Equal("15:00", item.HoraPartidaVolta);
 		Assert.Equal("GRU", item.AeroChegadaVolta);
 	}
@@ -76,14 +80,17 @@ public class FrontendTravelTicketServiceTests
 		]));
 
 		var result = await service.SearchAsync(ValidRequest(), default);
-		Assert.Equal([1, 2], result.Select(x => x.Id).ToArray());
+		Assert.True(result.IsValid);
+		Assert.Equal([1, 2], result.Value!.Select(x => x.Id).ToArray());
 	}
 
 	[Fact]
 	public async Task CiaAerea_Falls_Back_To_AirlineCode()
 	{
 		var service = CreateService(new StubFlightProvider([ValidFlight("TP", null)]));
-		var item = Assert.Single(await service.SearchAsync(ValidRequest(), default));
+		var result = await service.SearchAsync(ValidRequest(), default);
+		Assert.True(result.IsValid);
+		var item = Assert.Single(result.Value!);
 		Assert.Equal("TP", item.CiaAerea);
 	}
 
@@ -94,7 +101,8 @@ public class FrontendTravelTicketServiceTests
 		var req = ValidRequest();
 		req.Origem = "";
 		var result = await service.SearchAsync(req, default);
-		Assert.Single(result);
+		Assert.True(result.IsValid);
+		Assert.Single(result.Value!);
 	}
 
 	[Fact]
@@ -103,15 +111,18 @@ public class FrontendTravelTicketServiceTests
 		var service = CreateService(new StubFlightProvider([ValidFlight("TP")]));
 		var req = ValidRequest();
 		req.Origem = "";
-		await Assert.ThrowsAsync<ArgumentException>(() => service.SearchAsync(req, default));
+		var result = await service.SearchAsync(req, default);
+		Assert.False(result.IsValid);
+		Assert.Contains(result.Errors, e => e.Field == "origin");
 	}
 
 	[Fact]
 	public async Task Response_Serializes_Using_Expected_CamelCase_Names()
 	{
 		var service = CreateService(new StubFlightProvider([ValidFlight("LA")]));
-		var response = await service.SearchAsync(ValidRequest(), default);
-		var json = JsonSerializer.Serialize(response,
+		var result = await service.SearchAsync(ValidRequest(), default);
+		Assert.True(result.IsValid);
+		var json = JsonSerializer.Serialize(result.Value,
 			new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
 
 		Assert.Contains("\"ciaAerea\"", json);

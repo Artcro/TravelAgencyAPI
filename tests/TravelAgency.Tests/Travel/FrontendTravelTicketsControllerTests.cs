@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using TravelAgency.Api.Controllers;
+using TravelAgency.Application.Common;
 using TravelAgency.Application.DTOs.Travel;
 using TravelAgency.Application.Travel;
 
@@ -25,6 +26,7 @@ public sealed class FrontendTravelTicketsControllerTests
 
 		var ok = Assert.IsType<OkObjectResult>(result.Result);
 		Assert.Same(service.Response, ok.Value);
+		Assert.IsAssignableFrom<IReadOnlyList<FrontendTravelTicketDto>>(ok.Value);
 		Assert.NotNull(service.LastRequest);
 		Assert.Equal("JFK", service.LastRequest!.Destino);
 		Assert.Equal(departure, service.LastRequest.DataIda);
@@ -116,11 +118,11 @@ public sealed class FrontendTravelTicketsControllerTests
 			}
 		];
 
-		public Task<IReadOnlyList<FrontendTravelTicketDto>> SearchAsync(FrontendTravelTicketSearchRequest request,
-			CancellationToken cancellationToken)
+		public Task<Result<IReadOnlyList<FrontendTravelTicketDto>>> SearchAsync(
+			FrontendTravelTicketSearchRequest request, CancellationToken cancellationToken)
 		{
 			LastRequest = request;
-			return Task.FromResult(Response);
+			return Task.FromResult(Result<IReadOnlyList<FrontendTravelTicketDto>>.Ok(Response));
 		}
 	}
 }

@@ -1,4 +1,4 @@
-namespace TravelAgency.Api.Options;
+namespace TravelAgency.Application.Config;
 
 public sealed class SecurityOptions
 {

@@ -4,7 +4,7 @@
 Phase 4 is implemented with deployment contract polish: production Swagger toggle, startup migrations toggle, and raw-array travel ticket endpoints.
 
 ## Phase 3 Status
-Phase 3 is implemented: migrations setup instructions, saved-trip ownership hardening, service-level test expansion, Amadeus parsing hardening, rate limiting policies, and README operational guidance are in place.
+Phase 3 is implemented: migrations setup instructions, saved-trip ownership hardening, service-level test expansion, provider parsing hardening, rate limiting policies, and README operational guidance are in place.
 
 ## Public Contract Endpoints (Open)
 - **Airport autocomplete:** `GET /api/v1/airports/search`
@@ -169,9 +169,6 @@ dotnet build TravelAgencyApi.sln
 dotnet test TravelAgencyApi.sln
 ```
 
-## Amadeus Setup Reminder
-Configure `Amadeus` values (`BaseUrl`, `ClientId`, `ClientSecret`) in environment/app settings before running legacy Amadeus provider flows.
-
 ## Provider Notes
 Flights use Duffel by default. Locations use the local airport database backed by OurAirports CSV sync. Hotels and activities remain mocked.
 
@@ -209,9 +206,6 @@ Troubleshooting: if logs show `The request was canceled due to the configured Ht
    - `Jwt__Secret`
    - `Jwt__AccessTokenMinutes`
    - `Jwt__RefreshTokenDays`
-   - `Amadeus__BaseUrl`
-   - `Amadeus__ClientId`
-   - `Amadeus__ClientSecret`
    - `ConnectionStrings__DefaultConnection`
    - `Cors__AllowAnyOrigin`
    - `Cors__AllowedOrigins__0`
@@ -223,8 +217,7 @@ Troubleshooting: if logs show `The request was canceled due to the configured Ht
    - `TravelSearchDefaults__DefaultOrigin=GRU`
 5. Create or connect a Render PostgreSQL instance, and use the internal database URL/connection string where possible for `ConnectionStrings__DefaultConnection`.
 6. Run EF Core migrations either locally (against the target DB) or from a secure shell/one-off environment that can reach the Render database.
-7. Set production Amadeus credentials in Render (`Amadeus__ClientId`, `Amadeus__ClientSecret`).
-8. Set `Cors__AllowedOrigins__0` to your deployed frontend URL.
+7. Set `Cors__AllowedOrigins__0` to your deployed frontend URL.
 
 Use `.env.example` as a template for local/Render variable names only. Never commit real secrets or a real `.env` file.
 
@@ -235,7 +228,7 @@ Use `.env.example` as a template for local/Render variable names only. Never com
 
 
 ## Flight Provider Defaults (Duffel)
-Amadeus Self-Service is now legacy/optional for new demos. Default flight provider is **Duffel** test mode and default location provider is the **Local** airport database.
+Default flight provider is **Duffel** test mode and default location provider is the **Local** airport database.
 
 ### Render environment variables
 - `TravelProviders__FlightProvider=Duffel`
@@ -254,11 +247,6 @@ Amadeus Self-Service is now legacy/optional for new demos. Default flight provid
 - `AirportDataSync__RefreshIntervalHours=24`
 - `AirportDataSync__PeriodicCheckHours=6`
 - `AirportDataSync__MinimumAirportCount=5000`
-
-Optional legacy Amadeus settings (only when selecting `Amadeus` provider):
-- `Amadeus__BaseUrl`
-- `Amadeus__ClientId`
-- `Amadeus__ClientSecret`
 
 Hotels and activities remain mocked.
 

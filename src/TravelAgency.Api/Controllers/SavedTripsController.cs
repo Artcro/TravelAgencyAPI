@@ -1,8 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
+using TravelAgency.Application.Config;
 using TravelAgency.Application.DTOs.Travel;
 using TravelAgency.Application.Travel;
-using TravelAgency.Infrastructure;
 
 namespace TravelAgency.Api.Controllers;
 

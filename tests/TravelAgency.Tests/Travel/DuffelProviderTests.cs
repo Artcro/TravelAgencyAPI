@@ -7,6 +7,7 @@ using TravelAgency.Application.DTOs.Travel;
 using TravelAgency.Infrastructure.Database;
 using TravelAgency.Infrastructure.Providers.Duffel;
 using TravelAgency.Infrastructure.Providers.Mock;
+using TravelAgency.Infrastructure.Services;
 
 namespace TravelAgency.Tests.Travel;
 
@@ -122,7 +123,9 @@ public class DuffelProviderTests
 
 		var http = new HttpClient(handler);
 		var factory = new StubFactory(http);
-		return new DuffelFlightProvider(factory, Options.Create(opts), db, NullLogger<DuffelFlightProvider>.Instance);
+		var requestLogger = new ProviderRequestLogger(db, NullLogger<ProviderRequestLogger>.Instance);
+		return new DuffelFlightProvider(factory, Options.Create(opts), requestLogger,
+			NullLogger<DuffelFlightProvider>.Instance);
 	}
 
 	private static string ListOffersResponse(int count)

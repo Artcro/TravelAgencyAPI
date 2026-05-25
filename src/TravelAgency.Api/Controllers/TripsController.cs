@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using TravelAgency.Api.Config;
 using TravelAgency.Application.DTOs.Travel;
 using TravelAgency.Application.Travel;
 
@@ -13,7 +14,8 @@ public class TripsController(ITripSearchService tripSearchService) : ControllerB
 		CancellationToken cancellationToken)
 	{
 		var result = await tripSearchService.SearchAsync(req, null, cancellationToken);
-		return Ok(result);
+		if (!result.IsValid) return BadRequest(ValidationProblemBuilder.Build(result.Errors, HttpContext.Request.Path));
+		return Ok(result.Value);
 	}
 
 	[HttpGet("searches/{searchId:guid}")]
