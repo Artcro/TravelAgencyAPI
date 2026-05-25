@@ -9,7 +9,6 @@ using TravelAgency.Application.Travel;
 using TravelAgency.Infrastructure.Database;
 using TravelAgency.Infrastructure.Database.Entities;
 using TravelAgency.Infrastructure.Options;
-using TravelAgency.Infrastructure.Providers.Amadeus;
 using TravelAgency.Infrastructure.Providers.Duffel;
 using TravelAgency.Infrastructure.Providers.Local;
 using TravelAgency.Infrastructure.Providers.Mock;
@@ -21,7 +20,6 @@ public static class DependencyInjection
 {
 	public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
 	{
-		services.Configure<AmadeusOptions>(configuration.GetSection(AmadeusOptions.SectionName));
 		services.Configure<TravelProvidersOptions>(configuration.GetSection(TravelProvidersOptions.SectionName));
 		services.Configure<DuffelOptions>(configuration.GetSection(DuffelOptions.SectionName));
 		services.Configure<AirportDataSyncOptions>(configuration.GetSection(AirportDataSyncOptions.SectionName));
@@ -45,36 +43,20 @@ public static class DependencyInjection
 		services.AddScoped<ILocationProvider>(sp =>
 		{
 			var providers = sp.GetRequiredService<IOptions<TravelProvidersOptions>>().Value;
-			var amadeus = sp.GetRequiredService<IOptions<AmadeusOptions>>().Value;
-			var location = providers.LocationProvider;
-			if (IsLocalLocationProvider(location)) return sp.GetRequiredService<LocalAirportLocationProvider>();
-
-			if (string.Equals(location, "Amadeus", StringComparison.OrdinalIgnoreCase) &&
-			    !string.IsNullOrWhiteSpace(amadeus.ClientId) && !string.IsNullOrWhiteSpace(amadeus.ClientSecret))
-				return sp.GetRequiredService<AmadeusLocationProvider>();
-
-			return sp.GetRequiredService<MockLocationProvider>();
+			return IsLocalLocationProvider(providers.LocationProvider)
+				? sp.GetRequiredService<LocalAirportLocationProvider>()
+				: sp.GetRequiredService<MockLocationProvider>();
 		});
 
-		services.AddScoped<IFlightProvider>(sp =>
-		{
-			var provider = sp.GetRequiredService<IOptions<TravelProvidersOptions>>().Value.FlightProvider;
-			return string.Equals(provider, "Amadeus", StringComparison.OrdinalIgnoreCase)
-				? sp.GetRequiredService<AmadeusFlightProvider>()
-				: sp.GetRequiredService<DuffelFlightProvider>();
-		});
+		services.AddScoped<IFlightProvider, DuffelFlightProvider>();
 
 		services.AddScoped<IHotelProvider, MockHotelProvider>();
 		services.AddScoped<IActivityProvider, MockActivityProvider>();
-		services.AddScoped<AmadeusAuthClient>();
-		services.AddScoped<AmadeusLocationProvider>();
-		services.AddScoped<AmadeusFlightProvider>();
 		services.AddScoped<DuffelFlightProvider>();
 		services.AddScoped<LocalAirportLocationProvider>();
 		services.AddScoped<MockLocationProvider>();
 		services.AddScoped<IAirportDataSyncService, OurAirportsDataSyncService>();
 		services.AddHostedService<OurAirportsSyncHostedService>();
-		services.AddHttpClient("amadeus", c => c.Timeout = TimeSpan.FromSeconds(20));
 		services.AddHttpClient("duffel", (sp, c) =>
 		{
 			var opts = sp.GetRequiredService<IOptions<DuffelOptions>>().Value;

@@ -40,7 +40,7 @@ public sealed class TripSegmentDto
 
 public sealed class FlightOptionDto
 {
-	public string Provider { get; set; } = "Amadeus";
+	public string Provider { get; set; } = "Duffel";
 	public string ProviderOfferId { get; set; } = "";
 	public string AirlineCode { get; set; } = "";
 	public string? AirlineName { get; set; }
