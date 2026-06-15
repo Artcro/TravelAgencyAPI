@@ -26,7 +26,7 @@ public sealed class AirportsController(TravelDbContext db, ILogger<AirportsContr
 			var iataQuery = rawQuery.ToUpperInvariant();
 
 			var items = await db.Airports.AsNoTracking()
-				.Where(x => x.IsActive &&
+				.Where(x => x.IsActive && x.ScheduledService &&
 				            (x.IataCode == iataQuery ||
 				             x.IataCode.StartsWith(iataQuery) ||
 				             (x.CitySearch != null && x.CitySearch.Contains(normalizedQuery)) ||

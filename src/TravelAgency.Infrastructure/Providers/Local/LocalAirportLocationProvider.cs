@@ -16,7 +16,7 @@ public sealed class LocalAirportLocationProvider(TravelDbContext db) : ILocation
 		if (q.Length < 2) return [];
 
 		var matches = await db.Airports.AsNoTracking()
-			.Where(x => x.IsActive &&
+			.Where(x => x.IsActive && x.ScheduledService &&
 			            (x.IataCode.ToLower().Contains(q) ||
 			             x.Name.ToLower().Contains(q) ||
 			             (x.City != null && x.City.ToLower().Contains(q)) ||

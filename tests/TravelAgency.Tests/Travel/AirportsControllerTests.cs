@@ -57,6 +57,24 @@ public sealed class AirportsControllerTests
 		Assert.Equal("{ error = q must be at least 2 characters }", badRequest.Value!.ToString());
 	}
 
+	[Fact]
+	public async Task Search_Excludes_Airports_Without_Scheduled_Service()
+	{
+		var db = CreateDb();
+		SeedAirport(db, "GIG", "Rio de Janeiro", "BR", "Brasil", "Galeao International Airport");
+		SeedAirport(db, "RRJ", "Rio de Janeiro", "BR", "Brasil", "Jacarepagua - Roberto Marinho Airport",
+			scheduledService: false);
+		await db.SaveChangesAsync();
+
+		var sut = new AirportsController(db, NullLogger<AirportsController>.Instance);
+		var result = await sut.Search("rio", 8, CancellationToken.None);
+
+		var ok = Assert.IsType<OkObjectResult>(result);
+		var items = Assert.IsAssignableFrom<IReadOnlyList<AirportAutocompleteDto>>(ok.Value);
+		Assert.Contains(items, x => x.Iata == "GIG");
+		Assert.DoesNotContain(items, x => x.Iata == "RRJ");
+	}
+
 	private static TravelDbContext CreateDb()
 	{
 		return new TravelDbContext(new DbContextOptionsBuilder<TravelDbContext>()
@@ -65,7 +83,7 @@ public sealed class AirportsControllerTests
 	}
 
 	private static void SeedAirport(TravelDbContext db, string iata, string city, string countryCode,
-		string countryName, string name)
+		string countryName, string name, bool scheduledService = true)
 	{
 		db.Airports.Add(new AirportEntity
 		{
@@ -79,7 +97,7 @@ public sealed class AirportsControllerTests
 			NameSearch = AirportTextNormalizer.Normalize(name),
 			CountrySearch = AirportTextNormalizer.Normalize(countryName),
 			AirportType = "large_airport",
-			ScheduledService = true,
+			ScheduledService = scheduledService,
 			IsActive = true,
 			LastSyncedAtUtc = DateTime.UtcNow
 		});
