@@ -44,6 +44,8 @@ public static class DependencyInjection
 		services.AddScoped<ITripSearchService, TripSearchService>();
 		services.AddScoped<ISavedTripService, SavedTripService>();
 		services.AddScoped<IFrontendTravelTicketService, FrontendTravelTicketService>();
+		services.AddScoped<ITicketExtrasService, TicketExtrasService>();
+		services.AddScoped<ITravelPackageService, TravelPackageService>();
 		services.AddScoped<IProviderHealthService, ProviderHealthService>();
 		services.AddScoped<ILocationProvider>(sp =>
 		{
@@ -57,6 +59,7 @@ public static class DependencyInjection
 
 		services.AddScoped<IHotelProvider, MockHotelProvider>();
 		services.AddScoped<IActivityProvider, MockActivityProvider>();
+		services.AddScoped<ICarRentalProvider, MockCarRentalProvider>();
 		services.AddScoped<DuffelFlightProvider>();
 		services.AddScoped<LocalAirportLocationProvider>();
 		services.AddScoped<MockLocationProvider>();

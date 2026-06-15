@@ -14,6 +14,7 @@ public sealed class TravelDbContext : IdentityDbContext<ApplicationUser, Identit
 	public DbSet<RefreshTokenEntity> RefreshTokens => Set<RefreshTokenEntity>();
 	public DbSet<TripSearchEntity> TripSearches => Set<TripSearchEntity>();
 	public DbSet<SavedTripEntity> SavedTrips => Set<SavedTripEntity>();
+	public DbSet<TravelPackageEntity> TravelPackages => Set<TravelPackageEntity>();
 	public DbSet<ProviderRequestLogEntity> ProviderRequestLogs => Set<ProviderRequestLogEntity>();
 	public DbSet<AuditLogEntity> AuditLogs => Set<AuditLogEntity>();
 	public DbSet<AirportEntity> Airports => Set<AirportEntity>();
@@ -29,6 +30,8 @@ public sealed class TravelDbContext : IdentityDbContext<ApplicationUser, Identit
 		builder.Entity<SavedTripEntity>().HasIndex(x => x.UserId);
 		builder.Entity<SavedTripEntity>().HasIndex(x => x.SearchId);
 		builder.Entity<SavedTripEntity>().HasIndex(x => x.CreatedAtUtc);
+		builder.Entity<TravelPackageEntity>().HasIndex(x => x.UserId);
+		builder.Entity<TravelPackageEntity>().HasIndex(x => x.CreatedAtUtc);
 		builder.Entity<TripSearchEntity>().HasIndex(x => x.CreatedAtUtc);
 		builder.Entity<ProviderRequestLogEntity>().HasIndex(x => x.CreatedAtUtc);
 		builder.Entity<AuditLogEntity>().HasIndex(x => x.CreatedAtUtc);

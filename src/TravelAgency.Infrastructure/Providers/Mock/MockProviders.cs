@@ -81,3 +81,36 @@ public sealed class MockLocationProvider : ILocationProvider
 		return Task.FromResult<IReadOnlyList<LocationSuggestionDto>>(items);
 	}
 }
+
+public sealed class MockCarRentalProvider : ICarRentalProvider
+{
+	public Task<IReadOnlyList<CarRentalOptionDto>> SearchCarsAsync(TripSearchRequest request,
+		CancellationToken cancellationToken)
+	{
+		return Task.FromResult<IReadOnlyList<CarRentalOptionDto>>([
+			new CarRentalOptionDto
+			{
+				Provider = "Mock", ProviderCarId = "C1", Model = "Fiat Mobi", Seats = 5, Transmission = "Manual",
+				Mileage = "Quilometragem livre", PricePerDay = new MoneyDto(89.9m, request.Currency)
+			},
+			new CarRentalOptionDto
+			{
+				Provider = "Mock", ProviderCarId = "C2", Model = "Hyundai HB20", Seats = 5,
+				Transmission = "Automático", Mileage = "Quilometragem livre",
+				PricePerDay = new MoneyDto(129.9m, request.Currency)
+			},
+			new CarRentalOptionDto
+			{
+				Provider = "Mock", ProviderCarId = "C3", Model = "Chevrolet Onix", Seats = 5,
+				Transmission = "Automático", Mileage = "Quilometragem livre",
+				PricePerDay = new MoneyDto(149.9m, request.Currency)
+			},
+			new CarRentalOptionDto
+			{
+				Provider = "Mock", ProviderCarId = "C4", Model = "Jeep Renegade", Seats = 5,
+				Transmission = "Automático", Mileage = "Quilometragem livre",
+				PricePerDay = new MoneyDto(219.9m, request.Currency)
+			}
+		]);
+	}
+}

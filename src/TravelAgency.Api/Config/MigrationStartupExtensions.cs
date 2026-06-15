@@ -7,7 +7,8 @@ internal static class MigrationStartupExtensions
 {
 	private static readonly string[] RequiredTables =
 	[
-		"ProviderRequestLogs", "TripSearches", "SavedTrips", "AuditLogs", "Airports", "AirportDataSyncStatuses"
+		"ProviderRequestLogs", "TripSearches", "SavedTrips", "TravelPackages", "AuditLogs", "Airports",
+		"AirportDataSyncStatuses"
 	];
 
 	public static async Task ApplyMigrationsAndVerifyAsync(this WebApplication app)
